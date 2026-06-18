@@ -1,7 +1,7 @@
 site_name: Frontier CV Engineering Playbook
 site_description: Reproducible production-grade vision/VLM pipelines -- fine-tuning, drift detection, edge inference.
-repo_url: https://github.com/Mattral/computer-vision-playbook
-repo_name: Mattral/computer-vision-playbook
+repo_url: https://github.com/Mattral/production-vlm-engineering
+repo_name: Mattral/production-vlm-engineering
 
 theme:
   name: material

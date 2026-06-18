@@ -7,8 +7,8 @@ their limitations beats a large set of untested ones.
 ## Setup
 
 ```bash
-git clone https://github.com/Mattral/computer-vision-playbook
-cd computer-vision-playbook
+git clone https://github.com/Mattral/production-vlm-engineering
+cd production-vlm-engineering
 make setup            # CPU-only core; add `make setup-gpu` for the full ML stack
 ```
 

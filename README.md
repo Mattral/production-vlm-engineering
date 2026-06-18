@@ -31,8 +31,8 @@ below) -- nothing here pretends to be a real benchmark when it isn't.
 ## Quickstart
 
 ```bash
-git clone https://github.com/Mattral/computer-vision-playbook
-cd computer-vision-playbook
+git clone https://github.com/Mattral/production-vlm-engineering
+cd production-vlm-engineering
 make setup                       # CPU-only install (numpy/scipy/pyyaml/matplotlib/pillow + cli/dev extras)
 make run-example NAME=embedding_drift_active_learning
 ```

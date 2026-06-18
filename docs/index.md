@@ -1,6 +1,6 @@
 # Frontier CV Engineering Playbook
 
-See the [project README](https://github.com/Mattral/computer-vision-playbook#readme) for the
+See the [project README](https://github.com/Mattral/production-vlm-engineering#readme) for the
 full overview, quickstart, and per-example documentation.
 
 This `docs/` tree is currently minimal groundwork for the planned MkDocs Material site
