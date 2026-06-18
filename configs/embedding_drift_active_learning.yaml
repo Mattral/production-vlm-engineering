@@ -1,0 +1,27 @@
+name: embedding_drift_active_learning_demo
+
+embedding_source: "synthetic_clip_proxy"   # swap for real DINOv3/SigLIP-2/CLIP encoder; see vision_encoder.py for the real path
+embedding_dim: 64
+shift_magnitude: 12.0   # synthetic OOD shift strength; lower values simulate subtler real-world drift (see benchmark sweep)
+
+reference:
+  n_samples: 200
+  seed: 0
+
+stream:
+  n_batches: 12
+  batch_size: 25
+  drift_starts_at_batch: 6   # injects a style/lighting-style distribution shift from this batch onward
+  seed: 100
+
+detector:
+  cosine_alpha: 0.01         # KS-test significance threshold for CosineDriftDetector
+  ewma_lambda: 0.3
+  ewma_n_sigma: 2.0
+  ewma_warmup: 5
+  ewma_baseline_n: 6   # matches stream.drift_starts_at_batch so baseline is estimated from the full pre-drift period
+
+active_learning:
+  top_k_per_batch: 5         # number of most-novel samples flagged for (simulated) human labeling per batch
+
+output_dir: "outputs/embedding_drift_active_learning"

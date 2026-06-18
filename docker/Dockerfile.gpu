@@ -1,0 +1,32 @@
+# GPU image with the full ML stack (torch/transformers/peft/bitsandbytes/onnx)
+# for real LoRA fine-tuning, ONNX export, and quantization benchmarks.
+# Requires the NVIDIA Container Toolkit on the host (`docker run --gpus all`).
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 \
+    python3.11-venv \
+    python3-pip \
+    git \
+    libfreetype6-dev \
+    libpng-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/python3.11 /usr/bin/python
+
+COPY pyproject.toml README.md ./
+COPY src ./src
+COPY examples ./examples
+COPY configs ./configs
+COPY tests ./tests
+COPY scripts ./scripts
+
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -e ".[dev,cli,ml,onnx,serving]"
+
+ENV PYTHONUNBUFFERED=1
+ENV NVIDIA_VISIBLE_DEVICES=all
+
+CMD ["python", "-m", "cv_playbook.cli", "run-example", "vlm_chart_finetune"]

@@ -1,0 +1,51 @@
+site_name: Frontier CV Engineering Playbook
+site_description: Reproducible production-grade vision/VLM pipelines -- fine-tuning, drift detection, edge inference.
+repo_url: https://github.com/Mattral/computer-vision-playbook
+repo_name: Mattral/computer-vision-playbook
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Examples:
+      - VLM Chart Fine-Tuning: ../examples/pipelines/vlm_chart_finetune/README.md
+      - Embedding Drift & Active Learning: ../examples/pipelines/embedding_drift_active_learning/README.md
+      - Edge Inference & Serving: ../examples/pipelines/vlm_edge_inference/README.md
+  - API Reference: api.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - tables
+
+# NOTE: This is intentionally a minimal config (P0/P1 boundary groundwork).
+# The full P1-05 deliverable -- rendered example outputs, benchmark tables,
+# architecture diagrams, and a polished `docs/` content tree -- is tracked
+# separately and not yet built out; see ROADMAP.md.

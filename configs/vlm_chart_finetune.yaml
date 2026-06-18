@@ -1,0 +1,43 @@
+# Pinned checkpoint and date so results are reproducible — re-verify before relying on this
+# for anything beyond the smoke test, since checkpoints and library APIs move quickly.
+name: vlm_chart_finetune_smoke
+
+model:
+  checkpoint: "Qwen/Qwen2-VL-2B-Instruct"   # 2B variant for single-GPU/CPU-fallback reproducibility; swap to 7B for real runs
+  checkpoint_pinned_date: "2026-03-01"
+  dtype: "bf16"
+  quantization: "4bit"
+  trust_remote_code: false
+
+lora:
+  enabled: true
+  rank: 16
+  alpha: 32
+  dropout: 0.05
+  target_vision_tower: true
+  target_language_model: true
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
+
+data:
+  dataset_name: "synthetic_charts"   # zero-download synthetic generator; swap for ChartQA/DocVQA for real evaluation
+  dataset_pinned_date: "n/a"
+  train_split: "train"
+  eval_split: "validation"
+  max_samples: 60   # fast CPU smoke default (~6s of chart rendering); raise to 500-2000+ for a real GPU fine-tuning run
+  synthetic_chart_augmentation: true
+  image_max_side: 768
+
+train:
+  seed: 42
+  epochs: 1
+  batch_size: 1
+  grad_accum_steps: 8
+  learning_rate: 0.0002
+  warmup_ratio: 0.03
+  max_train_minutes: 30
+  logging: "local"
+  output_dir: "outputs/vlm_chart_finetune"
+
+eval:
+  metrics: ["numeric_accuracy", "grounding_score", "faithfulness_score"]
+  num_eval_samples: 12
