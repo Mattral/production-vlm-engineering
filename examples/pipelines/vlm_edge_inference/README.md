@@ -16,7 +16,7 @@ serving stub with dynamic batching.
 ## Run it
 
 ```bash
-cv-playbook run-example vlm_edge_inference
+production-vlm run-example vlm_edge_inference
 ```
 
 Serve it (requires the `serving` extra: `pip install -e ".[serving]"`):
@@ -50,7 +50,7 @@ ONNX Runtime's `CPUExecutionProvider`.
 
 ## The dynamic batching queue
 
-`cv_playbook.utils.batching_queue.BatchingQueue` has zero hard dependency on FastAPI and is
+`production_vlm.utils.batching_queue.BatchingQueue` has zero hard dependency on FastAPI and is
 unit-tested directly with asyncio (`tests/test_batching_queue.py`) -- import it into any
 other asyncio-based serving layer.
 
@@ -58,5 +58,5 @@ other asyncio-based serving layer.
 
 - `run.py` -- export, quantization, benchmark harness, synthetic fallback backbone.
 - `serve.py` -- FastAPI app using `BatchingQueue` for request batching.
-- `../../../src/cv_playbook/utils/batching_queue.py` -- the reusable batching primitive.
+- `../../../src/production_vlm/utils/batching_queue.py` -- the reusable batching primitive.
 - `../../../configs/vlm_edge_inference.yaml` -- model/export/quantization/benchmark/serving config.

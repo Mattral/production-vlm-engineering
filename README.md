@@ -1,4 +1,4 @@
-# Frontier CV Engineering Playbook
+# Production VLM Engineering
 
 Reproducible, production-grade pipelines for modern multimodal vision systems: efficient
 VLM fine-tuning on charts/documents, embedding-space drift detection with active learning,
@@ -7,7 +7,7 @@ runnable code, honest benchmarks, and clear before/after numbers rather than sli
 best-practice notes.
 
 This repository is a ground-up transformation of an earlier collection of computer vision
-study notes. That original material is preserved under [`legacy/cv-playbook-original/`](legacy/cv-playbook-original/)
+study notes. That original material is preserved under [`legacy/production-vlm-original/`](legacy/production-vlm-original/)
 for anyone who finds the conceptual walkthroughs useful, but it is no longer the focus of
 this repo.
 
@@ -32,7 +32,7 @@ below) -- nothing here pretends to be a real benchmark when it isn't.
 
 ```bash
 git clone https://github.com/Mattral/production-vlm-engineering
-cd production-vlm-engineering
+cd computer-vision-playbook
 make setup                       # CPU-only install (numpy/scipy/pyyaml/matplotlib/pillow + cli/dev extras)
 make run-example NAME=embedding_drift_active_learning
 ```
@@ -48,15 +48,15 @@ make run-example NAME=vlm_chart_finetune
 Or via the CLI directly once installed:
 
 ```bash
-cv-playbook list-examples
-cv-playbook run-example vlm_edge_inference
-cv-playbook benchmark embedding_drift_active_learning
+production-vlm list-examples
+production-vlm run-example vlm_edge_inference
+production-vlm benchmark embedding_drift_active_learning
 ```
 
 ## Repository layout
 
 ```
-src/cv_playbook/          Shared library code (config, drift detection, eval metrics, utils)
+src/production_vlm/          Shared library code (config, drift detection, eval metrics, utils)
 examples/pipelines/       The three runnable P0 examples, each with its own run.py
 configs/                  YAML configs, one per example, with pinned checkpoints/dates
 tests/                    pytest suite covering the shared library
@@ -75,14 +75,14 @@ rather than language-only LoRA, following 2025-2026 convention for multimodal ad
 Training data is a zero-download synthetic chart generator (bar/line/pie charts with
 ground-truth values), so the full pipeline runs with no external dataset dependency.
 
-Evaluation uses three purpose-built metrics in `cv_playbook.eval` rather than exact-match
+Evaluation uses three purpose-built metrics in `production_vlm.eval` rather than exact-match
 or BLEU, which are the wrong tools for numeric chart answers: numeric accuracy (relative
 tolerance matching on extracted numbers), grounding (does the answer reference terms
 actually present in the chart), and a composite faithfulness score inspired by RAGAS,
 adapted from retrieved-text faithfulness to chart/image evidence.
 
 ```bash
-cv-playbook run-example vlm_chart_finetune
+production-vlm run-example vlm_chart_finetune
 ```
 
 Without a CUDA device + the `ml` extra installed, this runs a CPU-only smoke test: real
@@ -97,7 +97,7 @@ serving fine on paper (latency nominal, no errors) while the input distribution 
 quietly shifted -- new camera, new lighting, a new upstream rendering pipeline -- and
 accuracy degrades with no signal until someone notices downstream.
 
-Two complementary detectors, both implemented from scratch in `cv_playbook.drift`:
+Two complementary detectors, both implemented from scratch in `production_vlm.drift`:
 
 - **`CosineDriftDetector`** -- a two-sample Kolmogorov-Smirnov test on the distribution of
   cosine similarities between incoming embeddings and a reference centroid. Distribution-free,
@@ -114,14 +114,14 @@ reference centroid (a free, label-free novelty proxy) and queues the most novel 
 labeling/retraining.
 
 ```bash
-cv-playbook run-example embedding_drift_active_learning
-cv-playbook benchmark embedding_drift_active_learning   # sensitivity sweep over drift magnitude
+production-vlm run-example embedding_drift_active_learning
+production-vlm benchmark embedding_drift_active_learning   # sensitivity sweep over drift magnitude
 ```
 
 This example needs only numpy/scipy/matplotlib/pillow -- no GPU, no network -- via a
 `SyntheticEmbeddingProxy` that derives embeddings from chart metadata rather than hashing
 pixels, calibrated so injected style shifts produce a real, validated separation in
-embedding space. Swap in `cv_playbook.utils.vision_encoder.RealVisionEncoder` for a genuine
+embedding space. Swap in `production_vlm.utils.vision_encoder.RealVisionEncoder` for a genuine
 DINOv3/SigLIP-2/CLIP embedding space once you have GPU + network access; the
 detection/active-learning code is unchanged.
 
@@ -140,14 +140,14 @@ size-or-timeout-whichever-first, trading a little per-request latency for much h
 throughput under concurrent load.
 
 ```bash
-cv-playbook run-example vlm_edge_inference
+production-vlm run-example vlm_edge_inference
 uvicorn examples.pipelines.vlm_edge_inference.serve:app --port 8000   # requires the `serving` extra
 ```
 
 Without `onnx`/`onnxruntime`/`torch`/`transformers` + network access, this benchmarks a
 synthetic compute-equivalent backbone instead -- real differential timing on real matrix
 multiplications, just not a real exported model. The dynamic-batching queue
-(`cv_playbook.utils.batching_queue.BatchingQueue`) has zero hard dependency on FastAPI and
+(`production_vlm.utils.batching_queue.BatchingQueue`) has zero hard dependency on FastAPI and
 is unit-tested directly with asyncio.
 
 ## Honesty about fallback paths

@@ -21,7 +21,7 @@ Then:
 This module intentionally has a hard runtime dependency on `fastapi`
 + `uvicorn` (the `serving` extra) since it is a server entry point,
 not a library import other examples might pull in -- it is not
-imported by `cv_playbook.cli` and therefore never breaks the
+imported by `production_vlm.cli` and therefore never breaks the
 no-network-stack fallback paths used by the other examples' smoke
 tests.
 """
@@ -42,8 +42,8 @@ from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
-from cv_playbook.utils.batching_queue import BatchingQueue  # noqa: E402
-from cv_playbook.utils.console import Console  # noqa: E402
+from production_vlm.utils.batching_queue import BatchingQueue  # noqa: E402
+from production_vlm.utils.console import Console  # noqa: E402
 
 console = Console()
 CONFIG_PATH = Path(__file__).resolve().parents[3] / "configs" / "vlm_edge_inference.yaml"
@@ -120,7 +120,7 @@ async def lifespan(app: FastAPI):
         await _batching_queue.stop()
 
 
-app = FastAPI(title="cv-frontier-playbook edge inference server", lifespan=lifespan)
+app = FastAPI(title="production-vlm-engineering edge inference server", lifespan=lifespan)
 
 
 @app.get("/health")

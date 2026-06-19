@@ -32,7 +32,7 @@ jobs:
           ruff format --check src tests examples
 
       - name: Unit tests
-        run: pytest --cov=src/cv_playbook --cov-report=term-missing --cov-report=xml
+        run: pytest --cov=src/production_vlm --cov-report=term-missing --cov-report=xml
 
       - name: Upload coverage
         if: matrix.python-version == '3.11'
@@ -59,13 +59,13 @@ jobs:
           pip install -e ".[dev,cli]"
 
       - name: Smoke-run vlm_chart_finetune (CPU fallback)
-        run: timeout 120 python -m cv_playbook.cli run-example vlm_chart_finetune
+        run: timeout 120 python -m production_vlm.cli run-example vlm_chart_finetune
 
       - name: Smoke-run embedding_drift_active_learning
-        run: timeout 60 python -m cv_playbook.cli run-example embedding_drift_active_learning
+        run: timeout 60 python -m production_vlm.cli run-example embedding_drift_active_learning
 
       - name: Smoke-run vlm_edge_inference (synthetic-backbone fallback)
-        run: timeout 60 python -m cv_playbook.cli run-example vlm_edge_inference
+        run: timeout 60 python -m production_vlm.cli run-example vlm_edge_inference
 
       - name: Verify each example produced a results.json
         run: |
@@ -79,6 +79,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build CPU image
-        run: docker build -f docker/Dockerfile -t cv-frontier-playbook:ci .
+        run: docker build -f docker/Dockerfile -t production-vlm-engineering:ci .
       - name: Run container smoke test
-        run: docker run --rm cv-frontier-playbook:ci
+        run: docker run --rm production-vlm-engineering:ci

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Vision embedding drift detection & active learning loop (Production MLOps core).
 
-Implements P0-04 of the Frontier CV Engineering Playbook roadmap.
+Implements P0-04 of the Production VLM Engineering roadmap.
 Enterprise reports from early 2026 repeatedly cite the absence of
 embedding-space drift detection as the leading cause of silent
 production CV failure: a model keeps running, latency looks fine,
@@ -36,11 +36,11 @@ Reference techniques:
 
 Run:
     python -m examples.pipelines.embedding_drift_active_learning.run
-    # or: cv-playbook run-example embedding_drift_active_learning
+    # or: production-vlm run-example embedding_drift_active_learning
 
 This example needs only numpy/scipy/matplotlib/pillow — no GPU, no
 network — by default, via SyntheticEmbeddingProxy. Swap in
-RealVisionEncoder (cv_playbook.utils.vision_encoder) for a genuine
+RealVisionEncoder (production_vlm.utils.vision_encoder) for a genuine
 DINOv3/SigLIP-2/CLIP embedding space once you have GPU + network access.
 """
 
@@ -55,11 +55,11 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
-from cv_playbook.drift import CosineDriftDetector, EWMADriftDetector, select_for_active_learning  # noqa: E402
-from cv_playbook.utils import set_seed, timer  # noqa: E402
-from cv_playbook.utils.console import Console  # noqa: E402
-from cv_playbook.utils.synthetic_charts import generate_synthetic_chart  # noqa: E402
-from cv_playbook.utils.vision_encoder import SyntheticEmbeddingProxy  # noqa: E402
+from production_vlm.drift import CosineDriftDetector, EWMADriftDetector, select_for_active_learning  # noqa: E402
+from production_vlm.utils import set_seed, timer  # noqa: E402
+from production_vlm.utils.console import Console  # noqa: E402
+from production_vlm.utils.synthetic_charts import generate_synthetic_chart  # noqa: E402
+from production_vlm.utils.vision_encoder import SyntheticEmbeddingProxy  # noqa: E402
 
 console = Console()
 
@@ -92,7 +92,7 @@ def main(config_path: str | None = None) -> dict:
     encoder = SyntheticEmbeddingProxy(embedding_dim=cfg["embedding_dim"], seed=cfg["reference"]["seed"], shift_magnitude=cfg.get("shift_magnitude", 12.0))
     console.print(
         f"Embedding source: [bold]{cfg['embedding_source']}[/bold] (dim={cfg['embedding_dim']}). "
-        "Swap for cv_playbook.utils.vision_encoder.RealVisionEncoder for a genuine DINOv3/SigLIP-2 space."
+        "Swap for production_vlm.utils.vision_encoder.RealVisionEncoder for a genuine DINOv3/SigLIP-2 space."
     )
 
     with timer("reference set construction"):

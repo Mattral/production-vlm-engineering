@@ -1,11 +1,11 @@
-"""Unit tests for cv_playbook.drift: CosineDriftDetector, EWMADriftDetector, active learning selection."""
+"""Unit tests for production_vlm.drift: CosineDriftDetector, EWMADriftDetector, active learning selection."""
 
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
-from cv_playbook.drift import (
+from production_vlm.drift import (
     CosineDriftDetector,
     EWMADriftDetector,
     select_for_active_learning,

@@ -31,12 +31,20 @@ sys.path.insert(0, str(REPO_ROOT))
 
 import numpy as np  # noqa: E402
 
-from cv_playbook.config import ConfigError, ExperimentConfig  # noqa: E402
-from cv_playbook.drift import CosineDriftDetector, EWMADriftDetector, select_for_active_learning  # noqa: E402
-from cv_playbook.eval import faithfulness_score, grounding_score, numeric_accuracy  # noqa: E402
-from cv_playbook.utils.batching_queue import BatchingQueue  # noqa: E402
-from cv_playbook.utils.synthetic_charts import generate_dataset, generate_synthetic_chart  # noqa: E402
-from cv_playbook.utils.vision_encoder import SyntheticEmbeddingProxy  # noqa: E402
+from production_vlm.config import ConfigError, ExperimentConfig  # noqa: E402
+from production_vlm.drift import CosineDriftDetector, EWMADriftDetector, select_for_active_learning  # noqa: E402
+from production_vlm.eval import faithfulness_score, grounding_score, numeric_accuracy  # noqa: E402
+from production_vlm.robustness import (  # noqa: E402
+    GuardDecision,
+    HallucinationGuard,
+    KNNOODDetector,
+    NaturalPerturbation,
+    apply_perturbation,
+)
+from production_vlm.robustness.chart_reader import read_tallest_bar  # noqa: E402
+from production_vlm.utils.batching_queue import BatchingQueue  # noqa: E402
+from production_vlm.utils.synthetic_charts import generate_dataset, generate_synthetic_chart  # noqa: E402
+from production_vlm.utils.vision_encoder import SyntheticEmbeddingProxy  # noqa: E402
 
 _PASS = 0
 _FAIL = 0
@@ -232,8 +240,75 @@ def test_batching_queue() -> None:
     check("batching: per-item output correctness", all(np.allclose(out, val * 5) for val, out in results))
 
 
+def test_robustness() -> None:
+    print("test_robustness")
+
+    # Perturbation: severity 0 minimal change, severity 1 meaningful change
+    chart = generate_synthetic_chart(seed=1, chart_type="bar", render_image=True)
+    img = chart.image
+    for kind in NaturalPerturbation.ALL:
+        r0 = apply_perturbation(img, kind, 0.0)
+        diff0 = np.abs(np.asarray(img, float) - np.asarray(r0.perturbed_image, float)).mean()
+        check(f"perturbation {kind} sev=0 minimal change", diff0 <= 1.0)
+        r1 = apply_perturbation(img, kind, 1.0)
+        diff1 = np.abs(np.asarray(img, float) - np.asarray(r1.perturbed_image, float)).mean()
+        check(f"perturbation {kind} sev=1 changes image", diff1 > 1.0)
+
+    # Chart reader: 100% clean baseline
+    correct = 0
+    for i in range(15):
+        c = generate_synthetic_chart(seed=i, chart_type="bar", render_image=True)
+        r = read_tallest_bar(c.image, len(c.categories), int(np.argmax(c.values)), plot_bbox=c.plot_bbox)
+        correct += r.correct
+    check("chart reader 100% clean baseline", correct == 15)
+
+    # Chart reader: brightness-robust (adaptive background detection)
+    correct_bright = 0
+    for i in range(15):
+        c = generate_synthetic_chart(seed=i, chart_type="bar", render_image=True)
+        p = apply_perturbation(c.image, "brightness", 0.8, seed=i)
+        r = read_tallest_bar(p.perturbed_image, len(c.categories), int(np.argmax(c.values)), plot_bbox=c.plot_bbox)
+        correct_bright += r.correct
+    check("chart reader robust to brightness sev=0.8", correct_bright == 15)
+
+    # OOD detector: calibrated FP/TP
+    encoder = SyntheticEmbeddingProxy(embedding_dim=64, seed=0, shift_magnitude=12.0)
+    ref_charts = [generate_synthetic_chart(seed=i, render_image=False) for i in range(150)]
+    ref_emb = encoder.encode_charts(ref_charts, style_shift_flags=[False] * 150)
+    ood_det = KNNOODDetector(ref_emb, k=5, percentile=15.0)
+    holdout_emb = encoder.encode_charts(
+        [generate_synthetic_chart(seed=2000 + i, render_image=False) for i in range(40)], [False] * 40
+    )
+    shifted_emb = encoder.encode_charts(
+        [generate_synthetic_chart(seed=3000 + i, style_shift=True, render_image=False) for i in range(40)], [True] * 40
+    )
+    fp = sum(r.is_ood for r in ood_det.score_batch(holdout_emb)) / 40
+    tp = sum(r.is_ood for r in ood_det.score_batch(shifted_emb)) / 40
+    check("OOD detector FP rate <= 25%", fp <= 0.25)
+    check("OOD detector TP rate >= 85%", tp >= 0.85)
+
+    # Hallucination guard
+    guard = HallucinationGuard()
+    good = guard.check(
+        "South shows throughput of 67.6 req/s, making it the highest.",
+        "South has throughput of 67.6 req/s, which is the highest.",
+        "South: 67.6 req/s; North: 50.0 req/s",
+    )
+    check("guard passes correct answer", good.decision == GuardDecision.PASS)
+    bad = guard.check(
+        "North has throughput of 999.9 which is the highest.",
+        "South has throughput of 67.6 req/s, which is the highest.",
+        "South: 67.6 req/s",
+    )
+    check("guard rejects hallucinated answer", bad.decision == GuardDecision.REJECT)
+    check("guard returns fallback message on reject", bad.output_text == guard.config.fallback_message)
+
+
 def main() -> int:
-    suites = [test_config, test_eval, test_drift, test_synthetic_charts, test_vision_encoder, test_batching_queue]
+    suites = [
+        test_config, test_eval, test_drift, test_synthetic_charts,
+        test_vision_encoder, test_batching_queue, test_robustness,
+    ]
     for suite in suites:
         try:
             suite()

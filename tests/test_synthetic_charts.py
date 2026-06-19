@@ -1,8 +1,8 @@
-"""Unit tests for cv_playbook.utils.synthetic_charts."""
+"""Unit tests for production_vlm.utils.synthetic_charts."""
 
 from __future__ import annotations
 
-from cv_playbook.utils.synthetic_charts import generate_dataset, generate_synthetic_chart
+from production_vlm.utils.synthetic_charts import generate_dataset, generate_synthetic_chart
 
 
 class TestGenerateSyntheticChart:

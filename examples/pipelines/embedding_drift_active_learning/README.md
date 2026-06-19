@@ -10,7 +10,7 @@ and error rates look fine while the input distribution has quietly shifted (new 
 lighting, a new upstream rendering pipeline) and accuracy degrades with no signal until a
 downstream complaint. This example builds the missing piece:
 
-1. **`CosineDriftDetector`** (`cv_playbook.drift`) -- a two-sample Kolmogorov-Smirnov test on
+1. **`CosineDriftDetector`** (`production_vlm.drift`) -- a two-sample Kolmogorov-Smirnov test on
    the distribution of cosine similarities to a reference centroid. Distribution-free, robust
    to the non-Gaussian shape real embedding spaces actually have.
 2. **`EWMADriftDetector`** -- an online, alertable SPC signal with a **frozen baseline
@@ -18,15 +18,15 @@ downstream complaint. This example builds the missing piece:
    the incoming stream is self-defeating under a real step-change (the jump itself inflates
    the variance estimate and widens the control limits just when they need to stay tight) --
    this was a real bug caught during development; see the class docstring in
-   `src/cv_playbook/drift/__init__.py` for the full explanation.
+   `src/production_vlm/drift/__init__.py` for the full explanation.
 3. **Active learning triage** -- when drift is flagged, rank the batch by distance from the
    reference centroid (free, label-free) and queue the most novel samples for human labeling.
 
 ## Run it
 
 ```bash
-cv-playbook run-example embedding_drift_active_learning
-cv-playbook benchmark embedding_drift_active_learning   # sensitivity sweep over drift magnitude
+production-vlm run-example embedding_drift_active_learning
+production-vlm benchmark embedding_drift_active_learning   # sensitivity sweep over drift magnitude
 ```
 
 ## What you'll see
@@ -44,13 +44,13 @@ specificity/sensitivity tradeoff of any real drift monitor, and the example does
 
 ## Swapping in a real vision encoder
 
-By default this uses `SyntheticEmbeddingProxy` (`cv_playbook.utils.vision_encoder`), which
+By default this uses `SyntheticEmbeddingProxy` (`production_vlm.utils.vision_encoder`), which
 derives embeddings from chart metadata rather than running a real model -- so the example
 needs only numpy/scipy/matplotlib/pillow, no GPU, no network. To use a genuine embedding
 space:
 
 ```python
-from cv_playbook.utils.vision_encoder import RealVisionEncoder
+from production_vlm.utils.vision_encoder import RealVisionEncoder
 
 encoder = RealVisionEncoder("facebook/dinov2-base")  # or a DINOv3/SigLIP-2 checkpoint
 embeddings = encoder.encode(list_of_pil_images)
@@ -62,6 +62,6 @@ checkpoint. The drift-detection and active-learning code downstream is unchanged
 ## Files
 
 - `run.py` -- streaming loop, both detectors, active-learning selection, benchmark sweep.
-- `../../../src/cv_playbook/drift/__init__.py` -- the detector implementations.
-- `../../../src/cv_playbook/utils/vision_encoder.py` -- synthetic proxy + real encoder wrapper.
+- `../../../src/production_vlm/drift/__init__.py` -- the detector implementations.
+- `../../../src/production_vlm/utils/vision_encoder.py` -- synthetic proxy + real encoder wrapper.
 - `../../../configs/embedding_drift_active_learning.yaml` -- stream/detector/active-learning config.

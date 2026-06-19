@@ -1,4 +1,4 @@
-"""Unit tests for cv_playbook.utils.batching_queue.BatchingQueue."""
+"""Unit tests for production_vlm.utils.batching_queue.BatchingQueue."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import time
 import numpy as np
 import pytest
 
-from cv_playbook.utils.batching_queue import BatchingQueue
+from production_vlm.utils.batching_queue import BatchingQueue
 
 
 def _sum_predict_fn(batch: np.ndarray) -> np.ndarray:

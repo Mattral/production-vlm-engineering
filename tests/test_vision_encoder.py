@@ -1,11 +1,11 @@
-"""Unit tests for cv_playbook.utils.vision_encoder.SyntheticEmbeddingProxy."""
+"""Unit tests for production_vlm.utils.vision_encoder.SyntheticEmbeddingProxy."""
 
 from __future__ import annotations
 
 import numpy as np
 
-from cv_playbook.utils.synthetic_charts import generate_synthetic_chart
-from cv_playbook.utils.vision_encoder import SyntheticEmbeddingProxy
+from production_vlm.utils.synthetic_charts import generate_synthetic_chart
+from production_vlm.utils.vision_encoder import SyntheticEmbeddingProxy
 
 
 class TestSyntheticEmbeddingProxy:

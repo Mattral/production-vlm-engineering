@@ -29,4 +29,4 @@ RUN pip install --no-cache-dir --upgrade pip && \
 ENV PYTHONUNBUFFERED=1
 ENV NVIDIA_VISIBLE_DEVICES=all
 
-CMD ["python", "-m", "cv_playbook.cli", "run-example", "vlm_chart_finetune"]
+CMD ["python", "-m", "production_vlm.cli", "run-example", "vlm_chart_finetune"]

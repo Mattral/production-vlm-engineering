@@ -1,8 +1,8 @@
-"""Unit tests for cv_playbook.eval: numeric_accuracy, grounding_score, faithfulness_score."""
+"""Unit tests for production_vlm.eval: numeric_accuracy, grounding_score, faithfulness_score."""
 
 from __future__ import annotations
 
-from cv_playbook.eval import faithfulness_score, grounding_score, numeric_accuracy
+from production_vlm.eval import faithfulness_score, grounding_score, numeric_accuracy
 
 
 class TestNumericAccuracy:

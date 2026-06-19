@@ -1,0 +1,27 @@
+name: vlm_robustness_guard_demo
+
+reference:
+  n_samples: 150
+  seed: 0
+
+perturbation_sweep:
+  kinds: ["brightness", "contrast", "gaussian_noise", "gaussian_blur", "rotation", "occlusion"]
+  severities: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+  n_samples_per_severity: 15
+  seed: 200
+
+ood:
+  embedding_dim: 64
+  shift_magnitude: 12.0
+  k: 5
+  percentile: 15.0   # see KNNOODDetector docstring for the empirical FP/TP tradeoff at this setting
+  n_holdout: 40
+  n_shifted: 40
+
+guard:
+  pass_threshold: 0.6
+  flag_threshold: 0.3
+  n_eval_samples: 30
+  hallucination_injection_rate: 0.3   # fraction of eval samples given a deliberately wrong/ungrounded answer
+
+output_dir: "outputs/vlm_robustness_guard"

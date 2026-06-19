@@ -5,7 +5,7 @@ evaluation run, a multi-checkpoint LoRA rank sweep, or a multi-hardware-target e
 comparison) that go beyond what each example's own `benchmark()` entry point covers.
 
 Each example's lightweight, fast sensitivity sweep lives next to its own code instead (see
-`cv-playbook benchmark <name>`, e.g. `examples/pipelines/embedding_drift_active_learning/run.py`'s
+`production-vlm benchmark <name>`, e.g. `examples/pipelines/embedding_drift_active_learning/run.py`'s
 `benchmark()` function) since those are designed to run in seconds as part of normal
 development, not as a separate heavyweight suite.
 

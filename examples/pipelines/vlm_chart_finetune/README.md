@@ -11,13 +11,13 @@ LoRA fine-tuning of a vision-language model on chart/document visual question an
   dependency and the same generator can inject controlled out-of-distribution style shifts
   for the companion drift-detection example.
 - Evaluation via numeric accuracy, grounding, and a RAGAS-inspired faithfulness score
-  (`cv_playbook.eval`) -- the right metrics for numeric chart answers, where exact-match and
+  (`production_vlm.eval`) -- the right metrics for numeric chart answers, where exact-match and
   BLEU give misleading signal.
 
 ## Run it
 
 ```bash
-cv-playbook run-example vlm_chart_finetune
+production-vlm run-example vlm_chart_finetune
 # or directly:
 python -m examples.pipelines.vlm_chart_finetune.run
 ```
@@ -25,7 +25,7 @@ python -m examples.pipelines.vlm_chart_finetune.run
 Override the config:
 
 ```bash
-cv-playbook run-example vlm_chart_finetune --config path/to/custom.yaml
+production-vlm run-example vlm_chart_finetune --config path/to/custom.yaml
 ```
 
 ## What you'll see
@@ -50,7 +50,7 @@ gradient accumulation under a hard `max_train_minutes` wall-clock cap.
 
 ## Swapping in a real dataset
 
-Replace calls to `cv_playbook.utils.synthetic_charts.generate_dataset` with a loader for
+Replace calls to `production_vlm.utils.synthetic_charts.generate_dataset` with a loader for
 ChartQA, DocVQA, or any chart/document VQA dataset that yields `(image, question, answer,
 evidence_text)` tuples -- the rest of the pipeline (LoRA setup, training loop, evaluation
 metrics) is dataset-agnostic.

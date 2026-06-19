@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Reproducible efficient VLM fine-tuning pipeline for document/chart understanding.
 
-Implements P0-02 of the Frontier CV Engineering Playbook roadmap:
+Implements P0-02 of the Production VLM Engineering roadmap:
 LoRA fine-tuning (vision tower + language model) of a modern VLM on
 chart/document visual question answering, with grounding +
 faithfulness + numeric-accuracy evaluation, comparing zero-shot vs
@@ -20,7 +20,7 @@ Reference techniques:
 
 Run:
     python -m examples.pipelines.vlm_chart_finetune.run
-    # or: cv-playbook run-example vlm_chart_finetune
+    # or: production-vlm run-example vlm_chart_finetune
 
 Hardware:
     - Designed to complete a smoke-test pass in <30 min on a single
@@ -48,11 +48,11 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
-from cv_playbook.config import ExperimentConfig  # noqa: E402
-from cv_playbook.eval import faithfulness_score  # noqa: E402
-from cv_playbook.utils import RunLogger, set_seed, timer  # noqa: E402
-from cv_playbook.utils.console import Console  # noqa: E402
-from cv_playbook.utils.synthetic_charts import generate_dataset  # noqa: E402
+from production_vlm.config import ExperimentConfig  # noqa: E402
+from production_vlm.eval import faithfulness_score  # noqa: E402
+from production_vlm.utils import RunLogger, set_seed, timer  # noqa: E402
+from production_vlm.utils.console import Console  # noqa: E402
+from production_vlm.utils.synthetic_charts import generate_dataset  # noqa: E402
 
 console = Console()
 
@@ -113,7 +113,7 @@ def _lora_finetuned_simulation(eval_set, cfg: ExperimentConfig) -> dict:
 
     Scores a paraphrased-but-correct answer through the *real*
     evaluation harness (numeric_accuracy + grounding_score +
-    faithfulness_score from cv_playbook.eval), demonstrating the
+    faithfulness_score from production_vlm.eval), demonstrating the
     metric pipeline end-to-end on a case it should score well. When
     `_has_real_ml_stack()` is True, `train_real()` + genuine model
     generations replace this stand-in.

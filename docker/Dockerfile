@@ -24,4 +24,4 @@ RUN pip install --no-cache-dir --upgrade pip && \
 ENV PYTHONUNBUFFERED=1
 
 # Default: run the fastest example end-to-end as a container smoke test.
-CMD ["python", "-m", "cv_playbook.cli", "run-example", "embedding_drift_active_learning"]
+CMD ["python", "-m", "production_vlm.cli", "run-example", "embedding_drift_active_learning"]

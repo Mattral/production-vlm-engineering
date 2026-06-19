@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Efficient inference optimization & edge deployment benchmark for vision/VLM models.
 
-Implements P0-03 of the Frontier CV Engineering Playbook roadmap:
+Implements P0-03 of the Production VLM Engineering roadmap:
 export a vision backbone to ONNX, apply dynamic INT8 quantization,
 and produce a clear before/after latency/throughput/memory/accuracy
 table -- the standard "should I deploy the fp32 or quantized model"
@@ -20,7 +20,7 @@ Reference techniques:
 
 Run:
     python -m examples.pipelines.vlm_edge_inference.run
-    # or: cv-playbook run-example vlm_edge_inference
+    # or: production-vlm run-example vlm_edge_inference
 
 Hardware & environment behavior:
     - Real path (requires `pip install -e ".[ml,onnx]"` + network
@@ -51,8 +51,8 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
-from cv_playbook.utils import set_seed, timer  # noqa: E402
-from cv_playbook.utils.console import Console  # noqa: E402
+from production_vlm.utils import set_seed, timer  # noqa: E402
+from production_vlm.utils.console import Console  # noqa: E402
 
 console = Console()
 
@@ -239,7 +239,7 @@ def _accuracy_retention_proxy(quantized: bool) -> float:
     retains 97-99.5% of fp32 top-1 accuracy on standard benchmarks;
     this returns a representative illustrative value for the
     fallback/no-real-model path. Replace with a genuine eval (e.g.
-    cv_playbook.eval.numeric_accuracy on chart-QA outputs) once
+    production_vlm.eval.numeric_accuracy on chart-QA outputs) once
     running the real export path on your own VLM checkpoint.
     """
     return 1.0 if not quantized else 0.984

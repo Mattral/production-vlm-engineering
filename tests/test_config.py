@@ -1,10 +1,10 @@
-"""Unit tests for cv_playbook.config: ExperimentConfig validation."""
+"""Unit tests for production_vlm.config: ExperimentConfig validation."""
 
 from __future__ import annotations
 
 import pytest
 
-from cv_playbook.config import ConfigError, ExperimentConfig
+from production_vlm.config import ConfigError, ExperimentConfig
 
 
 def _valid_raw_config() -> dict:
