@@ -1,51 +1,106 @@
 site_name: Production VLM Engineering
-site_description: Reproducible production-grade vision/VLM pipelines -- fine-tuning, drift detection, edge inference.
+site_description: >-
+  Reproducible, production-grade pipelines for multimodal vision systems:
+  fine-tuning, drift monitoring, edge inference, robustness & safety.
+site_url: https://mattral.github.io/production-vlm-engineering/
 repo_url: https://github.com/Mattral/production-vlm-engineering
 repo_name: Mattral/production-vlm-engineering
+edit_uri: edit/main/docs/
 
 theme:
   name: material
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
   palette:
     - scheme: default
       primary: indigo
+      accent: deep-purple
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - scheme: slate
       primary: indigo
+      accent: deep-purple
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
   features:
+    - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
+    - navigation.expand
     - navigation.top
+    - navigation.footer
     - content.code.copy
+    - content.code.annotate
+    - search.highlight
+    - search.suggest
 
 nav:
   - Home: index.md
+  - Getting Started:
+      - Quickstart: getting_started/quickstart.md
+      - Installation: getting_started/installation.md
+      - Architecture: getting_started/architecture.md
   - Examples:
-      - VLM Chart Fine-Tuning: ../examples/pipelines/vlm_chart_finetune/README.md
-      - Embedding Drift & Active Learning: ../examples/pipelines/embedding_drift_active_learning/README.md
-      - Edge Inference & Serving: ../examples/pipelines/vlm_edge_inference/README.md
+      - Overview: examples/overview.md
+      - VLM Chart Fine-Tuning: examples/vlm_chart_finetune.md
+      - Embedding Drift & Active Learning: examples/embedding_drift.md
+      - Edge Inference & Serving: examples/edge_inference.md
+      - Robustness & Safety Guard: examples/robustness_guard.md
+  - Concepts:
+      - LoRA Adaptation: concepts/lora.md
+      - Drift Detection: concepts/drift.md
+      - Evaluation Metrics: concepts/metrics.md
+      - OOD & Robustness: concepts/robustness.md
+  - Benchmark Results: benchmark_report.md
   - API Reference: api.md
+  - Contributing: contributing.md
 
 plugins:
   - search
   - mkdocstrings:
       handlers:
         python:
+          paths: [src]
           options:
             show_source: true
             show_root_heading: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            docstring_style: google
+            merge_init_into_class: true
+            filters: ["!^_"]
 
 markdown_extensions:
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
-  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - tables
+  - attr_list
+  - def_list
+  - footnotes
+  - toc:
+      permalink: true
 
-# NOTE: This is intentionally a minimal config (P0/P1 boundary groundwork).
-# The full P1-05 deliverable -- rendered example outputs, benchmark tables,
-# architecture diagrams, and a polished `docs/` content tree -- is tracked
-# separately and not yet built out; see ROADMAP.md.
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Mattral/production-vlm-engineering
+  version:
+    provider: mike
+
+extra_css:
+  - assets/extra.css
