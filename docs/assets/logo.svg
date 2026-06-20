@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- Bar chart -->
+  <rect x="6" y="24" width="8" height="16" rx="1" fill="#5C6BC0"/>
+  <rect x="18" y="14" width="8" height="26" rx="1" fill="#7986CB"/>
+  <rect x="30" y="18" width="8" height="22" rx="1" fill="#9FA8DA"/>
+  <!-- Upward arrow (production) -->
+  <path d="M40 8 L44 14 L41 14 L41 26 L39 26 L39 14 L36 14 Z" fill="#FF6F00"/>
+  <!-- Base line -->
+  <line x1="4" y1="41" x2="44" y2="41" stroke="#B0BEC5" stroke-width="2"/>
+</svg>

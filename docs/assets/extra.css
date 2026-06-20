@@ -1,0 +1,27 @@
+/* Production VLM Engineering — MkDocs Material overrides */
+
+:root {
+  --md-primary-fg-color: #3949AB;
+  --md-accent-fg-color: #7C4DFF;
+}
+
+/* Tighter code blocks in tables */
+.md-typeset table code {
+  font-size: 0.8em;
+  padding: 1px 4px;
+}
+
+/* Warning admonition for CPU smoke-test disclaimers */
+.md-typeset .admonition.note > .admonition-title::before {
+  background-color: var(--md-accent-fg-color);
+}
+
+/* Slightly more breathing room for the nav */
+.md-nav__item {
+  padding: 0.05rem 0;
+}
+
+/* Mermaid diagram background in dark mode */
+[data-md-color-scheme="slate"] .mermaid svg {
+  background: transparent;
+}
