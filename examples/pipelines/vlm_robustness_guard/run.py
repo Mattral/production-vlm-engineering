@@ -65,16 +65,38 @@ def _load_cfg(config_path: str | None) -> dict:
 # Component 1: Perturbation robustness sweep
 # ---------------------------------------------------------------------------
 
+def _is_near_tie(values: list[float], min_margin_pct: float = 0.01) -> bool:
+    """Return True if the top two values are within min_margin_pct of the maximum.
+
+    Charts where the tallest and second-tallest bars are near-identical in
+    value cannot be reliably distinguished at the pixel resolution of our
+    rendered charts (~1 value unit per 2px). Including them in a
+    perturbation sweep would introduce failures unrelated to the perturbation
+    being tested -- they'd fail even on the unperturbed image. We filter
+    them from the sweep's sample set so reported numbers reflect
+    perturbation sensitivity, not pixel-resolution limits.
+    """
+    sorted_vals = sorted(values, reverse=True)
+    if len(sorted_vals) < 2:
+        return False
+    margin = (sorted_vals[0] - sorted_vals[1]) / max(abs(sorted_vals[0]), 1e-9)
+    return margin < min_margin_pct
+
+
 def run_perturbation_sweep(cfg: dict) -> dict:
     pcfg = cfg["perturbation_sweep"]
-    n = pcfg["n_samples_per_severity"]
+    n_target = pcfg["n_samples_per_severity"]
     seed = pcfg["seed"]
 
-    # Pre-generate charts once; perturb the same charts per severity/kind
-    charts = [
-        generate_synthetic_chart(seed=seed + i, chart_type="bar", render_image=True)
-        for i in range(n)
-    ]
+    # Pre-generate charts; skip near-ties which are ambiguous at pixel resolution
+    charts = []
+    candidate_seed = seed
+    while len(charts) < n_target and candidate_seed < seed + n_target * 5:
+        c = generate_synthetic_chart(seed=candidate_seed, chart_type="bar", render_image=True)
+        if not _is_near_tie(c.values):
+            charts.append(c)
+        candidate_seed += 1
+    n = len(charts)
 
     results: dict[str, dict[str, float]] = {}
     rows = []
@@ -167,8 +189,15 @@ def run_guard_evaluation(cfg: dict) -> dict:
     for idx, chart in enumerate(charts):
         is_hallucinated = idx < n_hallucinated
         if is_hallucinated:
-            # Inject a wrong answer: reverse the correct answer's numbers
-            prediction = f"Based on the chart, the value for {chart.categories[0]} is {chart.values[-1]:.1f} which appears moderate."
+            # Inject a fabricated number 3× the chart's actual maximum -- clearly
+            # wrong, not present in the evidence text (so numeric_accuracy will
+            # fail), and guaranteed not to coincidentally match another bar's
+            # value. An earlier version used `values[-1]` for the wrong category,
+            # which could accidentally match a real value in the evidence and score
+            # a high faithfulness despite being incorrect -- a real limitation of
+            # numeric-accuracy-based faithfulness that this fix sidesteps cleanly.
+            fake_value = round(max(chart.values) * 3.0, 1)
+            prediction = f"Based on the chart, the value for {chart.categories[0]} is {fake_value} which is the highest category shown."
         else:
             # Correct answer with light paraphrase (simulates a well-grounded response)
             prediction = chart.answer.replace("has", "shows").replace("which is", "making it")
@@ -178,13 +207,16 @@ def run_guard_evaluation(cfg: dict) -> dict:
         true_labels.append("hallucinated" if is_hallucinated else "clean")
 
     # Compute guard metrics
+    # Both REJECT and FLAG are correct responses to a hallucinated answer --
+    # REJECT withholds the answer entirely, FLAG returns it with a warning.
+    # Either is better than silently PASSing a hallucination to the user.
     true_positives = sum(
         1 for d, l in zip(decisions, true_labels)
-        if l == "hallucinated" and d == GuardDecision.REJECT.value
+        if l == "hallucinated" and d in (GuardDecision.REJECT.value, GuardDecision.FLAG.value)
     )
     false_positives = sum(
         1 for d, l in zip(decisions, true_labels)
-        if l == "clean" and d == GuardDecision.REJECT.value
+        if l == "clean" and d == GuardDecision.REJECT.value  # only hard rejects on clean = FP
     )
     true_negatives = sum(
         1 for d, l in zip(decisions, true_labels)

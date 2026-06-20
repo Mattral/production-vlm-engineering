@@ -38,3 +38,12 @@ docker-build-gpu:
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	rm -rf .pytest_cache .ruff_cache outputs/*
+
+notebooks:
+	jupyter notebook notebooks/
+
+benchmark:
+	python benchmarks/run_all.py
+
+benchmark-skip-slow:
+	python benchmarks/run_all.py --skip vlm_robustness_guard
