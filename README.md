@@ -6,7 +6,6 @@
 
 *Efficient VLM adaptation · Embedding-space drift detection · Edge inference · Robustness & safety · Video/temporal reasoning*
 
-[![CI](https://github.com/Mattral/production-vlm-engineering/actions/workflows/ci.yml/badge.svg)](https://github.com/Mattral/production-vlm-engineering/actions)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
