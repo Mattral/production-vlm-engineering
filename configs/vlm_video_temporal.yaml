@@ -1,0 +1,37 @@
+name: vlm_video_temporal_demo
+
+# Synthetic video clips (proxy for real video files)
+# Replace _synthetic_frame_sequence() in run.py with a real loader
+# (decord, torchvision.io, or av) to use actual video files.
+video:
+  n_clips: 6
+  n_frames_per_clip: 8
+  seed: 42
+
+# Frame sampling strategies to evaluate
+sampling:
+  uniform_n: 4              # number of frames for uniform strategy
+  keyframe_l1_threshold: 0.12  # L1 pixel diff threshold for scene-change detection
+  adaptive_n: 4             # frame budget for adaptive (highest-motion) strategy
+
+# Temporal evaluation
+eval:
+  temporal_faithfulness_threshold: 0.3  # minimum score to count as "grounded in frame"
+
+# Vision encoder for embedding-based scene-change detection
+embedding:
+  dim: 64
+  shift_magnitude: 8.0
+  seed: 0
+
+# Structured JSON answer schema (see STRUCTURED_ANSWER_SCHEMA in run.py)
+# Required fields: answer (string), frame_references (list[int]), confidence (float 0-1)
+structured_output:
+  enabled: true
+
+output_dir: "outputs/vlm_video_temporal"
+
+# Next steps for real video (not used in this demo):
+# video_loader: "decord"          # decord / torchvision / av
+# vlm_checkpoint: "VITA-1.5"     # or Video-LLaVA, InternVL2-Video, etc.
+# vlm_checkpoint_pinned_date: "2026-03-01"

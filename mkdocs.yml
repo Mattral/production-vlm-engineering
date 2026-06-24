@@ -48,6 +48,7 @@ nav:
       - Embedding Drift & Active Learning: examples/embedding_drift.md
       - Edge Inference & Serving: examples/edge_inference.md
       - Robustness & Safety Guard: examples/robustness_guard.md
+      - Video / Temporal Reasoning: examples/vlm_video_temporal.md
   - Concepts:
       - LoRA Adaptation: concepts/lora.md
       - Drift Detection: concepts/drift.md
