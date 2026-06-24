@@ -84,6 +84,14 @@ EXAMPLES: list[ExampleSpec] = [
         timeout_s=180,
         tags=["robustness", "safety", "OOD", "hallucination"],
     ),
+    ExampleSpec(
+        name="vlm_video_temporal",
+        module="examples.pipelines.vlm_video_temporal.run",
+        headline_keys=["strategy_results.uniform_4", "strategy_results.keyframe", "strategy_results.adaptive_4"],
+        headline_labels=["Uniform-4 faithfulness", "Keyframe faithfulness", "Adaptive-4 faithfulness"],
+        timeout_s=60,
+        tags=["video", "temporal", "multi-frame", "P1-04"],
+    ),
 ]
 
 
