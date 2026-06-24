@@ -43,6 +43,8 @@ from production_vlm.robustness import (  # noqa: E402
 )
 from production_vlm.robustness.chart_reader import read_tallest_bar  # noqa: E402
 from production_vlm.utils.batching_queue import BatchingQueue  # noqa: E402
+from production_vlm.utils.observability import ObservabilityLogger  # noqa: E402
+from production_vlm.utils.retraining import QueuedSample, RetrainingTrigger  # noqa: E402
 from production_vlm.utils.synthetic_charts import generate_dataset, generate_synthetic_chart  # noqa: E402
 from production_vlm.utils.vision_encoder import SyntheticEmbeddingProxy  # noqa: E402
 
@@ -304,10 +306,120 @@ def test_robustness() -> None:
     check("guard returns fallback message on reject", bad.output_text == guard.config.fallback_message)
 
 
+
+def test_observability_retraining() -> None:
+    print("test_observability_retraining")
+    import tempfile, threading
+    from pathlib import Path
+
+    # ObservabilityLogger
+    with tempfile.TemporaryDirectory() as td:
+        lp = Path(td) / "events.jsonl"
+        logger = ObservabilityLogger(lp, run_id="verify_test")
+        logger.log_drift_event(0, 25, False, False, 0.1, 0.8, 0.76)
+        logger.log_drift_event(1, 25, True, False, 0.55, 1e-7, 0.62, al_selected_count=5)
+        check("obs: log file created", lp.exists())
+        events = logger.read_all()
+        check("obs: two events written", len(events) == 2)
+        check("obs: schema_version present", all(e["schema_version"] == "1.0" for e in events))
+        check("obs: seq increments", [e["seq"] for e in events] == [0, 1])
+        check("obs: drift event fields", events[0]["event_type"] == "drift_check")
+        check("obs: al_selected_count", events[1]["al_selected_count"] == 5)
+        logger.log_ood_event(True, 0.72, 0.28, 0.35)
+        logger.log_guard_event("reject", 0.15, 0.0, 0.30)
+        summary = logger.summary()
+        check("obs: summary drift batches", summary["drift"]["total_batches"] == 2)
+        check("obs: summary ood flagged", summary["ood"]["flagged"] == 1)
+        check("obs: summary guard rejected", summary["guard"]["rejected"] == 1)
+
+    # RetrainingTrigger
+    import numpy as np
+    def make_sample(i):
+        return QueuedSample(i, i // 5, float(np.random.default_rng(i).uniform()), "drift_ks")
+
+    # Single enqueue fires at threshold
+    fired = []
+    t = RetrainingTrigger(queue_threshold=5, callback=lambda s: fired.append(len(s)), cooldown_s=0)
+    for i in range(5):
+        t.enqueue(make_sample(i))
+    check("retrain: fires at threshold", fired == [5])
+    check("retrain: queue cleared after fire", t.queue_size == 0)
+
+    # Below threshold: no fire
+    t2 = RetrainingTrigger(queue_threshold=10, callback=lambda s: None, cooldown_s=0)
+    for i in range(4):
+        t2.enqueue(make_sample(i))
+    check("retrain: no fire below threshold", t2.queue_size == 4)
+
+    # Batch enqueue fires multiple times correctly
+    fired3 = []
+    t3 = RetrainingTrigger(queue_threshold=3, callback=lambda s: fired3.append(len(s)), cooldown_s=0)
+    t3.enqueue_batch([make_sample(i) for i in range(9)])
+    check("retrain: batch fires 3x3 not 1x9", fired3 == [3, 3, 3])
+
+    # Cooldown blocks second fire
+    fired4 = []
+    t4 = RetrainingTrigger(queue_threshold=3, callback=lambda s: fired4.append(1), cooldown_s=999)
+    t4.enqueue_batch([make_sample(i) for i in range(9)])
+    check("retrain: cooldown blocks multi-fire", len(fired4) == 1)
+
+    # Error in callback recorded, not propagated
+    def bad_cb(s): raise RuntimeError("fail")
+    t5 = RetrainingTrigger(queue_threshold=3, callback=bad_cb, cooldown_s=0)
+    for i in range(3):
+        t5.enqueue(make_sample(i))
+    h = t5.trigger_history
+    check("retrain: error in callback recorded", len(h) == 1 and not h[0].success)
+
+    # Invalid threshold raises
+    try:
+        RetrainingTrigger(queue_threshold=0)
+        check("retrain: invalid threshold raises", False)
+    except ValueError:
+        check("retrain: invalid threshold raises", True)
+
+
+
+
+def test_structured_extraction() -> None:
+    print("test_structured_extraction")
+    import importlib.util
+
+    # Load the chart finetune run module without executing __main__
+    spec = importlib.util.spec_from_file_location(
+        "ft_run",
+        str(Path(__file__).parent.parent / "examples" / "pipelines" / "vlm_chart_finetune" / "run.py")
+    )
+    ft_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ft_mod)
+
+    charts = [generate_synthetic_chart(seed=i, chart_type="bar", render_image=False) for i in range(20)]
+
+    # Every ground-truth extraction is schema-valid
+    schema_keys = ft_mod._CHART_JSON_SCHEMA["required"]
+    for c in charts[:5]:
+        ex = ft_mod._extract_structured_json(c)
+        check("struct: schema keys present", all(k in ex for k in schema_keys))
+        check("struct: correct chart_type", ex["chart_type"] == c.chart_type)
+        check("struct: series length matches categories", len(ex["series"]) == len(c.categories))
+
+    # Fine-tuned (ground-truth) mode: perfect metrics
+    r_fine = ft_mod._structured_extraction_accuracy(charts, noise_zero_shot=False)
+    check("struct: finetuned schema validity 100%", r_fine["schema_validity_rate"] == 1.0)
+    check("struct: finetuned numeric MAPE 0%", r_fine["numeric_extraction_mape"] == 0.0)
+    check("struct: finetuned category coverage 100%", r_fine["category_coverage"] == 1.0)
+
+    # Zero-shot mode: degraded (simulated errors injected)
+    r_zero = ft_mod._structured_extraction_accuracy(charts, noise_zero_shot=True)
+    check("struct: zero-shot schema validity <100%", r_zero["schema_validity_rate"] < 1.0)
+    check("struct: zero-shot MAPE >0%", r_zero["numeric_extraction_mape"] > 0.0)
+
 def main() -> int:
     suites = [
         test_config, test_eval, test_drift, test_synthetic_charts,
         test_vision_encoder, test_batching_queue, test_robustness,
+        test_observability_retraining,
+        test_structured_extraction,
     ]
     for suite in suites:
         try:
