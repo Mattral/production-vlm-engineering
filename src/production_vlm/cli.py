@@ -17,6 +17,7 @@ _EXAMPLES = {
     "vlm_edge_inference": "examples.pipelines.vlm_edge_inference.run",
     "embedding_drift_active_learning": "examples.pipelines.embedding_drift_active_learning.run",
     "vlm_robustness_guard": "examples.pipelines.vlm_robustness_guard.run",
+    "vlm_video_temporal": "examples.pipelines.vlm_video_temporal.run",
 }
 
 

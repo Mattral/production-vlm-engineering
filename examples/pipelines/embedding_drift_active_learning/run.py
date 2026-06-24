@@ -58,6 +58,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 from production_vlm.drift import CosineDriftDetector, EWMADriftDetector, select_for_active_learning  # noqa: E402
 from production_vlm.utils import set_seed, timer  # noqa: E402
 from production_vlm.utils.console import Console  # noqa: E402
+from production_vlm.utils.observability import ObservabilityLogger, PrometheusMetricsServer  # noqa: E402
+from production_vlm.utils.retraining import QueuedSample, RetrainingTrigger  # noqa: E402
 from production_vlm.utils.synthetic_charts import generate_synthetic_chart  # noqa: E402
 from production_vlm.utils.vision_encoder import SyntheticEmbeddingProxy  # noqa: E402
 
@@ -106,11 +108,33 @@ def main(config_path: str | None = None) -> dict:
         baseline_n=cfg["detector"]["ewma_baseline_n"],
     )
 
+    # Observability: structured JSONL event log (always) + optional Prometheus server
+    output_dir = Path(cfg["output_dir"])
+    obs_logger = ObservabilityLogger(
+        output_dir / "events.jsonl",
+        run_id=f"{cfg['name']}_{int(__import__('time').time())}",
+    )
+    prom_port = cfg.get("observability", {}).get("prometheus_port", 0)
+    prom_server = PrometheusMetricsServer(port=prom_port) if prom_port else None
+    if prom_server:
+        prom_server.start()
+
+    # Retraining trigger: closes the drift → label → retrain feedback loop.
+    # When the active-learning queue reaches `retraining_threshold` samples,
+    # the callback fires (default: prints what a real job would do; replace
+    # with a call to train_real() or a cluster job submission in production).
+    retrain_threshold = cfg.get("retraining", {}).get("queue_threshold", 15)
+    retrain_trigger = RetrainingTrigger(
+        queue_threshold=retrain_threshold,
+        cooldown_s=cfg.get("retraining", {}).get("cooldown_s", 0),
+    )
+
     console.print(f"Reference set: {reference_embeddings.shape[0]} samples, centroid established.")
     console.print(
         f"Streaming {cfg['stream']['n_batches']} batches of {cfg['stream']['batch_size']}; "
         f"drift injected from batch {cfg['stream']['drift_starts_at_batch']} onward."
     )
+    console.print(f"Observability log → {obs_logger.log_path}")
 
     rows = []
     al_queue_total = 0
@@ -134,6 +158,49 @@ def main(config_path: str | None = None) -> dict:
             if flagged:
                 al_selected = select_for_active_learning([ks_result], embeddings, top_k=cfg["active_learning"]["top_k_per_batch"])
                 al_queue_total += len(al_selected)
+
+                # Enqueue into the retraining trigger with novelty scores.
+                # The trigger fires a retraining callback when the threshold is reached,
+                # closing the drift → active-learning → retrain feedback loop.
+                l2_norm = np.linalg.norm(embeddings, axis=-1, keepdims=True)
+                normalized = embeddings / np.clip(l2_norm, 1e-12, None)
+                centroid = cosine_detector.centroid
+                sims = normalized @ centroid
+                novelty_scores = 1.0 - sims  # higher = more novel / farther from centroid
+
+                queued_samples = [
+                    QueuedSample(
+                        embedding_index=int(idx),
+                        batch_idx=batch_idx,
+                        novelty_score=float(novelty_scores[idx]),
+                        flagged_by="drift_ks" if ks_result.is_drift else "drift_ewma",
+                    )
+                    for idx in al_selected
+                ]
+                retrain_trigger.enqueue_batch(queued_samples)
+
+            # Emit structured observability events
+            obs_logger.log_drift_event(
+                batch_idx=batch_idx,
+                batch_size=cfg["stream"]["batch_size"],
+                is_drift_ks=ks_result.is_drift,
+                is_drift_ewma=ewma_result.is_drift,
+                ks_stat=ks_result.score,
+                p_value=ks_result.p_value,
+                batch_mean_similarity=ks_result.batch_mean_similarity,
+                ewma_mean=ewma_result.reference_mean_similarity,
+                ewma_lower_cl=ewma_result.details.get("lower_control_limit", 0.0),
+                al_selected_count=len(al_selected),
+                extra={"true_drift_injected": is_drifted_batch},
+            )
+            if prom_server:
+                prom_server.record_drift(
+                    ks_stat=ks_result.score,
+                    is_drift_ks=ks_result.is_drift,
+                    is_drift_ewma=ewma_result.is_drift,
+                    batch_mean_similarity=ks_result.batch_mean_similarity,
+                    al_queued=len(al_selected),
+                )
 
             rows.append(
                 [
@@ -167,6 +234,8 @@ def main(config_path: str | None = None) -> dict:
 
     console.print(f"Active learning queue accumulated {al_queue_total} samples flagged for human labeling / retraining.")
 
+    obs_summary = obs_logger.summary()
+    retrain_summary = retrain_trigger.summary()
     results = {
         "config_name": cfg["name"],
         "n_batches": cfg["stream"]["n_batches"],
@@ -174,6 +243,11 @@ def main(config_path: str | None = None) -> dict:
         "drift_detected_at_batch": detection_batch,
         "detection_delay_batches": detection_delay,
         "active_learning_queue_size": al_queue_total,
+        "retraining": retrain_summary,
+        "observability": {
+            "events_log": str(obs_logger.log_path),
+            "summary": obs_summary,
+        },
         "batches": [
             {
                 "batch_idx": i,
@@ -191,6 +265,7 @@ def main(config_path: str | None = None) -> dict:
     out_path = output_dir / "results.json"
     out_path.write_text(json.dumps(results, indent=2))
     console.print(f"[bold green]Results written to {out_path}[/bold green]")
+    console.print(f"[bold green]Observability events: {obs_logger.log_path} ({obs_summary['total_events']} events)[/bold green]")
     return results
 
 

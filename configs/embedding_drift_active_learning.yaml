@@ -25,3 +25,10 @@ active_learning:
   top_k_per_batch: 5         # number of most-novel samples flagged for (simulated) human labeling per batch
 
 output_dir: "outputs/embedding_drift_active_learning"
+
+observability:
+  prometheus_port: 0   # set to e.g. 9090 to expose Prometheus /metrics endpoint; 0 = disabled
+
+retraining:
+  queue_threshold: 15  # trigger retraining callback after this many AL-selected samples accumulate
+  cooldown_s: 0        # minimum seconds between retraining runs (0 = no cooldown in demo)
