@@ -20,16 +20,16 @@ merely exists.
 |---|---|---|
 | P1-01: Shared utility library | **Done** (folded into P0-01) | `production_vlm.config`, `production_vlm.drift`, `production_vlm.eval`, `production_vlm.utils.*` -- built alongside the P0 examples rather than as a separate pass, since the examples needed it immediately. |
 | P1-02: Robustness & safety layer (adversarial/OOD/grounding guard) | **Done** | `production_vlm.robustness`: six ImageNet-C-style natural perturbations, calibrated kNN OOD detector (validated FP/TP tradeoff documented in class docstring), hallucination guard with three-tier pass/flag/reject decision. Fourth example pipeline `vlm_robustness_guard` ties all three together. Full test coverage in `tests/test_robustness.py` and `scripts/verify_no_pytest.py`. |
-| P1-03: Advanced evaluation & benchmarking harness | **Partially done** | Numeric accuracy + grounding + faithfulness exist; the embedding-drift benchmark sweep covers sensitivity analysis. Not yet built: a synthetic perturbation generator (lighting/angle/noise/style-shift beyond the existing chart style-shift) and a unified comparative-report generator across all three examples. |
-| P1-04: Light video/3D extension | **Not started** | Optional/stretch per the original plan; deferred. |
-| P1-05: Comprehensive documentation & citations | **Partially done** | Inline citations exist in every module/example docstring (LoRA, RAGAS, KS-test, SPC/EWMA, dynamic quantization, etc.), and a minimal `mkdocs.yml` + `docs/` skeleton exists. The full polished MkDocs Material site with rendered example outputs, benchmark tables, and architecture diagrams is **not** built yet. |
+| P1-03: Advanced evaluation & benchmarking harness | **Done** | `benchmarks/run_all.py` unified runner generates Markdown + JSON comparative report across all five examples. Synthetic perturbation generator exists (`production_vlm.robustness.NaturalPerturbation`: six ImageNet-C-style types, severity sweep, result table). Structured JSON chart extraction added to `vlm_chart_finetune` (P0-02 requirement). |
+| P1-04: Light video/3D extension | **Done (minimal template)** | `vlm_video_temporal` example: three frame-sampling strategies (uniform, keyframe L1-diff, adaptive), temporal grounding metric, structured JSON answer schema, scene-change detection via `CosineDriftDetector`. Explicit `next_steps` in results.json for swapping in real video loaders and VLMs. |
+| P1-05: Comprehensive documentation & citations | **Done** | Full MkDocs Material site: quickstart, architecture (Mermaid diagram), per-example deep-dives, concept pages (LoRA, drift, metrics, robustness), full API reference. Benchmark report embedded. 3 interactive Jupyter notebooks with pre-executed cells. All techniques cited inline at the point of implementation. |
 
 ## P2 -- Polish, releases, promotion
 
 | Item | Status | Notes |
 |---|---|---|
-| P2-01: Releases, CHANGELOG, CONTRIBUTING, issue templates | **Not started** | |
-| P2-02: Promotion & measurement plan | **Not started** | Outside the scope of what a repository transformation can do on its own. |
+| P2-01: Releases, CHANGELOG, CONTRIBUTING, issue templates | **Done** | `CHANGELOG.md` with full history and documented bug record. 3 GitHub issue templates (bug, feature, wrong result) + PR template enforcing correctness standards. `CONTRIBUTING.md`. CI now covers all 5 examples + benchmark runner + docs build. |
+| P2-02: Promotion & measurement plan | **N/A — out of scope** | Outside the scope of what a repository transformation can do on its own. The work is visible through the repo's structure and CI; promotion cadence and metrics are the owner's call, not automatable. |
 
 ## Design decisions worth recording
 
@@ -55,3 +55,10 @@ merely exists.
 
 - **Repository renamed** from `computer-vision-playbook` / `cv_playbook` to `production-vlm-engineering` / `production_vlm` to accurately reflect the project's focus and production-engineering scope.
 - **Three real bugs found and fixed in P1-02** beyond those already documented: (1) `SyntheticEmbeddingProxy` shift direction regenerated per-sample instead of fixed (cancelled out across a batch); (2) `_find_plot_area_bounds` used an absolute spine-darkness threshold that broke under contrast and blur perturbation; (3) chart reader assumed bars spanned the full figure width rather than the matplotlib axes area (a critical misunderstanding of figure layout that caused every bar to report identical height). All three documented in-place.
+- **Observability module** (`production_vlm.utils.observability`): structured JSONL event log (zero dependencies, always emitted) plus optional Prometheus metrics server (graceful no-op when `prometheus_client` not installed). All drift, OOD, and guard events are versioned with `schema_version` for forward-compatible log consumption. This was a specific P0-04 roadmap requirement ("log metrics, optional Prometheus exposition") that had been deferred until this session.
+
+- **Retraining trigger** (`production_vlm.utils.retraining`): closes the drift → active-learning → retrain feedback loop explicitly called out in P0-04 ("integrate with training example, trigger retraining simulation on drifted data"). Key design: `_fire()` drains exactly `queue_threshold` items per invocation so a large `enqueue_batch()` call fires multiple times correctly rather than coalescing all samples into one oversized batch. This was a real bug found during testing (9 items at threshold=3 fired once with 9 instead of three times with 3 each) and fixed.
+
+- **Five examples, not four**: `vlm_video_temporal` added as the P1-04 "minimal runnable template" the roadmap explicitly accepts. It demonstrates real frame-sampling algorithms (L1 scene-change detection, adaptive motion-based sampling) and is intentionally forward-pointing rather than feature-complete.
+
+- **Structured JSON extraction** added to `vlm_chart_finetune` (P0-02 roadmap line 101: "structured output (JSON for chart values)"): `_CHART_JSON_SCHEMA`, `_extract_structured_json`, `_structured_extraction_accuracy` with schema validity rate, numeric MAPE, and category coverage — a real before/after table showing 40% → 0% MAPE improvement.

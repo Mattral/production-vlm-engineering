@@ -4,8 +4,9 @@
 
 **Reproducible, production-grade pipelines for modern multimodal vision systems.**
 
-*Efficient VLM adaptation · Embedding-space drift detection · Edge inference · Robustness & safety*
+*Efficient VLM adaptation · Embedding-space drift detection · Edge inference · Robustness & safety · Video/temporal reasoning*
 
+[![CI](https://github.com/Mattral/production-vlm-engineering/actions/workflows/ci.yml/badge.svg)](https://github.com/Mattral/production-vlm-engineering/actions)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -13,7 +14,7 @@
 
 ---
 
-Most "CV best practices" repos are static markdown — educational, but nothing you can run, benchmark against, or build on. This repo takes the opposite stance: **four runnable pipelines** that implement current (June 2026) frontier techniques with production constraints built in from the start.
+Most "CV best practices" repos are static markdown — educational, but nothing you can run, benchmark against, or build on. This repo takes the opposite stance: **five runnable pipelines** that implement current (June 2026) frontier techniques with production constraints built in from the start.
 
 Every example ships with:
 - A **CPU-only fallback path** so you can verify mechanics before spending GPU hours
@@ -27,14 +28,22 @@ Every example ships with:
 
 ## Benchmark Results (CPU smoke-test paths)
 
-| Example | Headline metric | Value | GPU path gives |
-|---|---|---|---|
-| VLM chart fine-tuning | Faithfulness Δ (LoRA vs zero-shot) | **+0.71** | Real LoRA adaptation numbers |
-| Embedding drift detection | Detection delay | **0 batches** | Same (numpy/scipy, no GPU needed) |
-| Edge inference | INT8 speedup vs fp32 | **4.2×** | Real ONNX Runtime measurement |
-| Robustness guard | Guard precision / recall | **1.0 / 1.0** | Same (no GPU needed) |
+Five examples run end-to-end in under 25 seconds on CPU. Numbers marked ⚠️ are smoke-test
+proxies; GPU path notes are in the rightmost column.
 
-*Full tables with per-severity, per-perturbation-type breakdown: [`benchmarks/reports/benchmark_report.md`](benchmarks/reports/benchmark_report.md)*
+| Example | Headline metric | Value | Notes |
+|---|---|---|---|
+| `vlm_chart_finetune` | Faithfulness Δ (LoRA vs zero-shot) | **+0.71** | ⚠️ Proxy; real LoRA trains on GPU |
+| `vlm_chart_finetune` | Structured extraction MAPE (fine-tuned) | **0%** | ⚠️ Ground-truth JSON used as proxy |
+| `embedding_drift_active_learning` | Detection delay (batches) | **0** | ✅ Real KS-test, numpy/scipy |
+| `embedding_drift_active_learning` | Retraining runs triggered | **2** | ✅ Real threshold-based feedback loop |
+| `vlm_edge_inference` | INT8 speedup vs fp32 | **3.99×** | ⚠️ Synthetic backbone; real ONNX needs `[onnx]` extra |
+| `vlm_robustness_guard` | Hallucination guard precision / recall | **1.0 / 1.0** | ✅ Real faithfulness harness |
+| `vlm_robustness_guard` | OOD detection TP rate | **85–100%** | ✅ Real kNN calibration |
+| `vlm_video_temporal` | Frame sampling faithfulness | **0.70** | ✅ Real temporal grounding metric |
+
+Full tables (per-severity perturbation breakdown, OOD ROC sweep, benchmark timestamps):
+[`benchmarks/reports/benchmark_report.md`](benchmarks/reports/benchmark_report.md) — regenerate with `python benchmarks/run_all.py`.
 
 ---
 
@@ -42,22 +51,24 @@ Every example ships with:
 
 ```
 production_vlm/           Shared library — CPU-only, zero hard ML deps
-├── config.py             Fail-fast dataclass config schemas
-├── drift/                KS-test + EWMA SPC drift detectors
-├── eval/                 Numeric accuracy, grounding, faithfulness metrics
-├── robustness/           Perturbations, OOD detection, hallucination guard
-└── utils/                Synthetic charts, vision encoder, batching queue
+├── config.py             Fail-fast dataclass config schemas (stdlib dataclasses, no pydantic)
+├── drift/                KS-test CosineDriftDetector + frozen-baseline EWMA SPC
+├── eval/                 Numeric accuracy, grounding, faithfulness (RAGAS-inspired)
+├── robustness/           ImageNet-C perturbations, kNN OOD detection, hallucination guard
+└── utils/                Synthetic charts, vision encoder, batching queue,
+                          observability (JSONL + Prometheus), retraining trigger
 
 examples/pipelines/
-├── vlm_chart_finetune/           LoRA fine-tuning (vision tower + LM)
-├── embedding_drift_active_learning/  KS-test + EWMA drift + active learning
-├── vlm_edge_inference/           ONNX export, INT8 quant, FastAPI serving
-└── vlm_robustness_guard/         Perturbation sweep, OOD, hallucination guard
+├── vlm_chart_finetune/              LoRA (vision tower + LM) + structured JSON extraction
+├── embedding_drift_active_learning/ KS-test + EWMA drift, AL triage, retraining loop
+├── vlm_edge_inference/              ONNX export, INT8 quantization, FastAPI dynamic batching
+├── vlm_robustness_guard/            Perturbation sweep, OOD, hallucination guard
+└── vlm_video_temporal/              Frame sampling, temporal grounding, scene-change detection
 
-benchmarks/run_all.py     Unified runner → single Markdown + JSON report
-configs/                  YAML configs with pinned checkpoints + dates
-tests/                    pytest suite (40 tests, 100% pass)
-scripts/verify_no_pytest.py  stdlib-only verifier (no pytest needed)
+notebooks/                3 interactive notebooks with pre-executed output cells
+benchmarks/run_all.py     Unified runner → Markdown + JSON comparative report
+tests/                    pytest suite (56 checks via verify_no_pytest.py)
+scripts/verify_no_pytest.py  stdlib-only verifier (no pytest needed, runs in CI)
 ```
 
 ---
@@ -89,7 +100,7 @@ cv-playbook run-example vlm_edge_inference
 
 ---
 
-## The Four Examples
+## The Five Examples
 
 ### 1 · VLM Chart Fine-Tuning ([`vlm_chart_finetune`](examples/pipelines/vlm_chart_finetune/))
 
@@ -133,6 +144,16 @@ Three production failure modes, each with a concrete detection or mitigation:
 **Hallucination guard**: `HallucinationGuard` converts `faithfulness_score` into a three-tier pass/flag/reject decision, returning a safe fallback message on reject rather than surfacing an ungrounded answer to the user.
 
 References: Hendrycks & Dietterich (2019) ImageNet-C
+
+### 5 · Video / Temporal Reasoning ([`vlm_video_temporal`](examples/pipelines/vlm_video_temporal/))
+
+Minimal but genuinely runnable template for multi-frame VLM reasoning (P1-04). Three frame sampling strategies compared on a synthetic clip dataset, a temporal grounding metric that extends `faithfulness_score` to multi-frame evidence, and structured JSON answer output matching a versioned schema.
+
+The key architectural connection: the same `CosineDriftDetector` from example 2 detects scene changes by flagging frames whose embeddings drift from the preceding window — no scene-change-specific training needed. This means a production video pipeline can reuse the same drift monitoring infrastructure as a batch monitoring system.
+
+Replace `_synthetic_frame_sequence()` with a real video loader (decord/torchvision) and `_mock_vlm_temporal()` with your VLM call (Video-LLaVA, VITA, InternVL2-Video). The sampling, grounding, and scene-detection code is unchanged.
+
+References: Lin et al. (2023) Video-LLaVA · Fu et al. (2024) VITA · CVPR 2026 temporal VLM track
 
 ---
 
