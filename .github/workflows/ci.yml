@@ -79,12 +79,16 @@ jobs:
       - name: Smoke-run vlm_robustness_guard
         run: timeout 180 python -m production_vlm.cli run-example vlm_robustness_guard
 
+      - name: Smoke-run vlm_video_temporal
+        run: timeout 60 python -m production_vlm.cli run-example vlm_video_temporal
+
       - name: Verify all examples produced results.json
         run: |
           test -f outputs/vlm_chart_finetune/results.json
           test -f outputs/embedding_drift_active_learning/results.json
           test -f outputs/vlm_edge_inference/results.json
           test -f outputs/vlm_robustness_guard/results.json
+          test -f outputs/vlm_video_temporal/results.json
 
       - name: Run unified benchmark and verify report generated
         run: |
