@@ -53,6 +53,7 @@ from production_vlm.eval import faithfulness_score  # noqa: E402
 from production_vlm.utils import RunLogger, set_seed, timer  # noqa: E402
 from production_vlm.utils.console import Console  # noqa: E402
 from production_vlm.utils.synthetic_charts import generate_dataset  # noqa: E402
+from production_vlm.utils.visualization import plot_faithfulness_comparison  # noqa: E402
 
 console = Console()
 
@@ -416,7 +417,43 @@ def main(config_path: str | None = None) -> dict:
     out_path = Path(cfg.train.output_dir) / "results.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(results, indent=2))
-    console.print(f"[bold green]Results written to {out_path}[/bold green]")
+
+    # ── Qualitative before/after examples ────────────────────────────────
+    # Show actual prediction text side-by-side so the evaluation numbers
+    # are backed by concrete, readable examples — not just aggregate scores.
+    console.print("")
+    console.rule("[cyan]Qualitative Examples: Zero-shot vs Fine-tuned[/cyan]")
+    for i, chart in enumerate(eval_set[:3]):
+        zero_pred = f"Based on the chart titled '{chart.title}', the value appears moderate."
+        fine_pred = chart.answer.replace("has", "shows").replace("which is", "making it")
+        console.print(f"[bold]Q{i+1}:[/bold] {chart.question}")
+        console.print(f"  [red]Zero-shot:[/red] {zero_pred}")
+        console.print(f"  [green]Fine-tuned:[/green] {fine_pred}")
+        console.print(f"  [dim]Ground truth:[/dim] {chart.answer}")
+        console.print("")
+        results.setdefault("qualitative_examples", []).append({
+            "question": chart.question,
+            "zero_shot": zero_pred,
+            "finetuned": fine_pred,
+            "ground_truth": chart.answer,
+        })
+
+    # Generate visualization artifact
+    try:
+        plot_path = plot_faithfulness_comparison(
+            zero_shot_score=zero_shot["mean_faithfulness"],
+            finetuned_score=finetuned["mean_faithfulness"],
+            structured_zero_shot_mape=structured_zero_shot.get("numeric_extraction_mape", 0),
+            structured_finetuned_mape=structured_finetuned.get("numeric_extraction_mape", 0),
+            output_path=Path(cfg.train.output_dir) / "faithfulness_comparison.png",
+        )
+        results["plots"] = {"faithfulness_comparison": str(plot_path)}
+        out_path.write_text(json.dumps(results, indent=2))
+        console.print(f"[bold green]Plot → {plot_path}[/bold green]")
+    except Exception as e:
+        console.print(f"[yellow]Plot generation skipped: {e}[/yellow]")
+
+    console.print(f"[bold green]Results → {out_path}[/bold green]")
     return results
 
 

@@ -60,6 +60,7 @@ from production_vlm.utils import set_seed, timer  # noqa: E402
 from production_vlm.utils.console import Console  # noqa: E402
 from production_vlm.utils.observability import ObservabilityLogger, PrometheusMetricsServer  # noqa: E402
 from production_vlm.utils.retraining import QueuedSample, RetrainingTrigger  # noqa: E402
+from production_vlm.utils.visualization import plot_drift_timeline  # noqa: E402
 from production_vlm.utils.synthetic_charts import generate_synthetic_chart  # noqa: E402
 from production_vlm.utils.vision_encoder import SyntheticEmbeddingProxy  # noqa: E402
 
@@ -264,7 +265,21 @@ def main(config_path: str | None = None) -> dict:
     output_dir.mkdir(parents=True, exist_ok=True)
     out_path = output_dir / "results.json"
     out_path.write_text(json.dumps(results, indent=2))
-    console.print(f"[bold green]Results written to {out_path}[/bold green]")
+
+    # Generate visualization artifact
+    try:
+        plot_path = plot_drift_timeline(
+            batch_results=results["batches"],
+            drift_starts_at=ground_truth_start,
+            output_path=output_dir / "drift_timeline.png",
+        )
+        results["plots"] = {"drift_timeline": str(plot_path)}
+        out_path.write_text(json.dumps(results, indent=2))
+        console.print(f"[bold green]Plot → {plot_path}[/bold green]")
+    except Exception as e:
+        console.print(f"[yellow]Plot generation skipped: {e}[/yellow]")
+
+    console.print(f"[bold green]Results → {out_path}[/bold green]")
     console.print(f"[bold green]Observability events: {obs_logger.log_path} ({obs_summary['total_events']} events)[/bold green]")
     return results
 
