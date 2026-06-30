@@ -8,6 +8,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Mattral/production-vlm-engineering/blob/main/notebooks/colab/01_evaluation_metrics_colab.ipynb)
 
 </div>
 
@@ -170,17 +171,20 @@ And printed unambiguously in console output. CPU smoke-test numbers and real GPU
 
 ---
 
-## Notebooks
+## 📓 Notebooks (Open in Google Colab)
 
-Interactive walkthroughs of the core techniques — no GPU required:
+Interactive walkthroughs of the core techniques — **no GPU required, no local setup**. Click any badge to launch directly in Colab; the package installs automatically at the top of each notebook.
 
-| Notebook | Covers |
-|---|---|
-| [`01_evaluation_metrics`](notebooks/01_evaluation_metrics.ipynb) | `numeric_accuracy`, `grounding_score`, `faithfulness_score` — why BLEU fails on chart answers |
-| [`02_drift_detection`](notebooks/02_drift_detection_active_learning.ipynb) | `CosineDriftDetector`, EWMA SPC with frozen baseline, active learning triage |
-| [`03_robustness_guard`](notebooks/03_robustness_safety_guard.ipynb) | Perturbation sweep, `KNNOODDetector`, `HallucinationGuard`, production wrapper pattern |
+| # | Notebook | Covers | Launch |
+|---|---|---|---|
+| 01 | Evaluation Metrics | `numeric_accuracy`, `grounding_score`, `faithfulness_score` — why BLEU fails on chart answers | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Mattral/production-vlm-engineering/blob/main/notebooks/colab/01_evaluation_metrics_colab.ipynb) |
+| 02 | Drift Detection & Active Learning | `CosineDriftDetector`, `EWMADriftDetector` (frozen-baseline SPC), label-free active learning triage | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Mattral/production-vlm-engineering/blob/main/notebooks/colab/02_drift_detection_colab.ipynb) |
+| 03 | Robustness & Safety Guard | Perturbation sweep, `KNNOODDetector`, `HallucinationGuard`, production wrapper pattern | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Mattral/production-vlm-engineering/blob/main/notebooks/colab/03_robustness_guard_colab.ipynb) |
 
-Pre-executed output cells render correctly on GitHub without running anything.
+Each Colab notebook runs end-to-end in 1–3 minutes and includes a "try it yourself" cell at the end for experimenting with your own inputs. See [`notebooks/colab/README.md`](notebooks/colab/README.md) for the full index.
+
+**Prefer to read without running anything?** Pre-executed versions with all output cells populated render directly on GitHub:
+[`01_evaluation_metrics.ipynb`](notebooks/01_evaluation_metrics.ipynb) · [`02_drift_detection_active_learning.ipynb`](notebooks/02_drift_detection_active_learning.ipynb) · [`03_robustness_safety_guard.ipynb`](notebooks/03_robustness_safety_guard.ipynb)
 
 ---
 
@@ -216,6 +220,12 @@ Concretely:
 - **The drift detector** is the monitoring primitive that every production VLM deployment will need once models are serving real traffic
 - **The edge inference patterns** generalize directly to the on-device efficient VLMs that will proliferate in 2027 on Jetson-class and similar hardware
 - **The robustness guard** aligns with the emerging standardization of safety layers for multimodal models
+
+---
+
+## Citations & References
+
+Every technique is cited inline in the docstring of the function/class that implements it. A consolidated bibliography (LoRA, RAGAS, ChartQA, KS test, SPC, PGD, ImageNet-C, ONNX quantization, Triton batching, Video-LLaVA/VITA) lives in [`docs/citations.md`](docs/citations.md).
 
 ---
 
