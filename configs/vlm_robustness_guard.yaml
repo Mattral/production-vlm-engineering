@@ -25,3 +25,9 @@ guard:
   hallucination_injection_rate: 0.3   # fraction of eval samples given a deliberately wrong/ungrounded answer
 
 output_dir: "outputs/vlm_robustness_guard"
+
+adversarial:
+  epsilon: 0.03137  # 8/255 — standard L-inf budget for ImageNet-scale attacks (Madry et al.)
+  n_samples: 20     # number of clean charts to attack in the proxy evaluation
+  # Real PGD (gradient-based): requires pip install -e ".[ml]" + CUDA
+  # Use production_vlm.robustness.perturbations.pgd_attack() with your VLM's vision tower
