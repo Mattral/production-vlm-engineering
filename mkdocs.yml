@@ -55,6 +55,7 @@ nav:
       - Evaluation Metrics: concepts/metrics.md
       - OOD & Robustness: concepts/robustness.md
   - Benchmark Results: benchmark_report.md
+  - Citations: citations.md
   - API Reference: api.md
   - Contributing: contributing.md
 
