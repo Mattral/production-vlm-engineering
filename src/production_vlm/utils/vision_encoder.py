@@ -15,6 +15,7 @@ their strong linear-probe transfer without task-specific fine-tuning.
 
 from __future__ import annotations
 
+import zlib
 from typing import Protocol
 
 import numpy as np
@@ -58,7 +59,8 @@ class RealVisionEncoder:
             outputs = self.model(**inputs)
         # CLS-token / pooled embedding, matching the convention most
         # drift-monitoring setups use for a single per-image vector.
-        pooled = outputs.pooler_output if hasattr(outputs, "pooler_output") and outputs.pooler_output is not None else outputs.last_hidden_state[:, 0, :]
+        has_pooler = hasattr(outputs, "pooler_output") and outputs.pooler_output is not None
+        pooled = outputs.pooler_output if has_pooler else outputs.last_hidden_state[:, 0, :]
         return pooled.cpu().numpy()
 
 
@@ -99,7 +101,15 @@ class SyntheticEmbeddingProxy:
         style_feat = np.zeros(8)
         style_feat[{"bar": 0, "line": 1, "pie": 2}.get(chart.chart_type, 3)] = 1.0
         style_feat[5] = len(chart.categories) / 6.0
-        style_feat[6] = hash(chart.units) % 1000 / 1000.0
+        # zlib.crc32, NOT Python's built-in hash(): hash() on strings is
+        # randomized per-process by default (PYTHONHASHSEED, a security
+        # feature against hash-collision DoS), so it produces a different
+        # value every time the interpreter starts. That silently made every
+        # downstream embedding -- and therefore every OOD/drift detection
+        # rate computed from it -- non-reproducible across process runs,
+        # directly contradicting this class's own "deterministic" docstring
+        # claim. crc32 is a genuinely deterministic string hash.
+        style_feat[6] = zlib.crc32(chart.units.encode()) % 1000 / 1000.0
         style_feat[7] = 1.0
 
         values = np.array(chart.values[:6] + [0.0] * max(0, 6 - len(chart.values[:6])))

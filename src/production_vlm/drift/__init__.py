@@ -142,7 +142,12 @@ class EWMADriftDetector:
             threshold=float(self.n_sigma * std),
             reference_mean_similarity=float(self._mean),
             batch_mean_similarity=float(value),
-            details={"upper_control_limit": float(upper), "lower_control_limit": float(lower), "n": n, "baseline_std": std},
+            details={
+                "upper_control_limit": float(upper),
+                "lower_control_limit": float(lower),
+                "n": n,
+                "baseline_std": std,
+            },
         )
 
 
@@ -157,6 +162,20 @@ def select_for_active_learning(
     embeddings sit farthest from the reference centroid are most
     likely to be OOD or under-represented, and are prioritized for
     human labeling in an active learning loop.
+
+    Limitation: the centroid is computed from ``embeddings`` itself
+    (the batch being ranked), not from an external reference set. This
+    is the right behavior for the shipped use case (an entire batch
+    has drifted together, and this ranks samples *within* that batch
+    by how far they've moved), but it means a single extreme outlier
+    within an otherwise tight, stable batch can paradoxically appear
+    *more* similar to the centroid rather than less, once its own
+    magnitude is large enough to dominate the mean used to compute
+    that centroid. If you need to rank samples against a fixed,
+    externally-defined reference distribution, compute the centroid
+    from a separate, uncontaminated reference set and pass in cosine
+    similarities directly rather than relying on this function's
+    internal centroid.
     """
     if len(drift_results) == 0:
         return np.array([], dtype=int)

@@ -55,7 +55,9 @@ def numeric_accuracy(prediction: str, reference: str, tolerance: float = 0.02) -
     pred_numbers = _extract_numbers(prediction)
 
     if not ref_numbers:
-        return NumericAccuracyResult(score=1.0 if not pred_numbers else 0.0, matched=0, total_reference=0, tolerance=tolerance)
+        return NumericAccuracyResult(
+            score=1.0 if not pred_numbers else 0.0, matched=0, total_reference=0, tolerance=tolerance
+        )
 
     remaining_pred = list(pred_numbers)
     matched = 0
@@ -104,7 +106,9 @@ def grounding_score(prediction: str, evidence_text: str, min_token_len: int = 3)
         return GroundingResult(score=0.0, grounded_terms=0, total_terms=0)
 
     grounded = pred_tokens & evidence_tokens
-    return GroundingResult(score=len(grounded) / len(pred_tokens), grounded_terms=len(grounded), total_terms=len(pred_tokens))
+    return GroundingResult(
+        score=len(grounded) / len(pred_tokens), grounded_terms=len(grounded), total_terms=len(pred_tokens)
+    )
 
 
 @dataclass
@@ -114,7 +118,12 @@ class FaithfulnessResult:
     grounding: GroundingResult
 
 
-def faithfulness_score(prediction: str, reference: str, evidence_text: str | None = None, weights: tuple[float, float] = (0.6, 0.4)) -> FaithfulnessResult:
+def faithfulness_score(
+    prediction: str,
+    reference: str,
+    evidence_text: str | None = None,
+    weights: tuple[float, float] = (0.6, 0.4),
+) -> FaithfulnessResult:
     """Composite faithfulness score combining numeric accuracy and grounding.
 
     Inspired by RAGAS-style faithfulness (is the generated answer

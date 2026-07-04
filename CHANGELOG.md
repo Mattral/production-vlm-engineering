@@ -9,6 +9,87 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Fixed (found by real CI/pytest run, not the sandbox stdlib verifier)
+
+- **`SyntheticEmbeddingProxy` embeddings were silently non-deterministic across process runs**,
+  contradicting the class's own "deterministic" docstring claim. `_chart_to_vector()` used
+  Python's built-in `hash(chart.units)` to derive one style-feature dimension — but Python
+  randomizes string hashing per-process by default (`PYTHONHASHSEED`, a security feature against
+  hash-collision DoS attacks), so `hash()` returns a *different* value every time the interpreter
+  starts. This meant every embedding computed from a chart's `units` string — and therefore every
+  OOD detection rate, drift detection outcome, and robustness-guard metric derived from those
+  embeddings — silently varied from run to run despite identical, fully-specified integer seeds
+  everywhere else in the pipeline. Verified directly: the OOD detector's TP rate on style-shifted
+  inputs ranged from 77.5% to 100% across 10 fresh process invocations with *zero* code changes
+  between them. Fixed by replacing `hash(chart.units)` with `zlib.crc32(chart.units.encode())`, a
+  genuinely deterministic string hash — verified stable at exactly 100% TP rate across 10
+  independent process runs after the fix, and confirmed all five examples now produce
+  byte-identical `results.json` output (excluding legitimate wall-clock timestamp fields) across
+  repeated independent runs. This was the most significant bug found this session: it silently
+  undermined the reproducibility of every headline number in this repo that touches
+  `SyntheticEmbeddingProxy`, without ever raising an error or looking obviously wrong on any
+  single run.
+
+- **`_structured_extraction_accuracy`'s zero-shot noise simulation used the same non-deterministic
+  `hash()` pattern** (`hash(chart.title) % 2**32`), with a second, compounding bug: chart titles
+  are drawn from a small combinatorial pool (metric × dimension), so multiple charts in the same
+  eval set can share an identical title — meaning `hash(title)`-derived random draws were not
+  independent across charts that happened to collide, in addition to not being reproducible
+  across process runs. Fixed by seeding from `chart.style_seed` (unique per chart by
+  construction, already present on `SyntheticChart`) instead. Verified deterministic and
+  reproducible (`schema_validity_rate == 0.55` on every one of 5 independent process runs, vs.
+  spuriously hitting `1.0` under the old code when a particular process's hash seed happened to
+  avoid the 40%-failure threshold on all of that eval set's distinct titles).
+
+- **`config.py` Literal validation silently no-op'd on every invalid value.** `from __future__ import
+  annotations` makes all dataclass annotations lazy *strings* at runtime (e.g. `dtype:
+  Literal["bf16","fp16","fp32"]` becomes the literal string `"Literal['bf16', 'fp16', 'fp32']"` in
+  `__annotations__`, not the actual `Literal[...]` type object). `get_origin()` on that string
+  silently returns `None` instead of `Literal`, so `_check_literal` never actually validated
+  anything — `ModelConfig(dtype="int4")` was accepted without error. Fixed by resolving
+  annotations via `typing.get_type_hints()`, which re-evaluates the postponed string back into
+  the real type object. This is a real, previously undetected correctness bug in every dataclass
+  config field typed as `Literal[...]`.
+
+- **`EWMADriftDetector` false-alarmed on a genuinely stable signal with a too-small calibration
+  window.** The `test_no_alarm_on_stable_signal` test used `baseline_n=5` — direct measurement
+  showed a 5-sample standard-deviation estimate underestimated the true population std by 2.6x on
+  this test's seed, making the nominal "3-sigma" band effectively much tighter than intended and
+  prone to spurious false alarms (verified: 0/20 seeds false-alarm at `baseline_n=10`, matching
+  standard SPC calibration-phase guidance of ~20-25 samples). Not a detector bug — a test
+  constructed with a too-small calibration sample. Fixed the test; the detector code and the
+  production config (`baseline_n=6`, used with a strong real drift signal) are unchanged.
+
+- **`select_for_active_learning` test constructed an outlier that could never be detected, at any
+  magnitude.** The test added a constant `+100.0` offset to one sample's every dimension and
+  expected it to rank as "farthest from centroid" — but since the centroid is computed from the
+  same batch containing the outlier, a large enough perturbation pulls the centroid toward
+  itself, making the outlier appear *more* similar to its own self-polluted centroid, not less.
+  Verified directly: no magnitude from 5 to 120 (in a 50-sample batch) ever produced a rank-0
+  outlier — larger perturbations always increased the outlier's pull on the mean faster than they
+  escaped it. This is the identical failure mode documented elsewhere in this codebase for
+  `SyntheticEmbeddingProxy`/`KNNOODDetector` test construction. Fixed by using a tight,
+  low-variance cluster (representing stable in-distribution embeddings, the function's actual
+  design target) plus one genuinely distinct directional outlier, which reliably ranks as most
+  novel (0/30 failures across seeds). Also documented the self-referential-centroid limitation in
+  `select_for_active_learning`'s docstring for future users with different batch compositions.
+
+- **Ruff line-length violations across the codebase (E501).** ~209 lines exceeded the configured
+  100-char limit; `ruff format` doesn't rewrap comments/docstrings/f-strings, so these needed
+  manual wrapping. Bumped `line-length` to 120 (a common, well-precedented convention) to resolve
+  the majority without sacrificing docstring/error-message readability, then manually wrapped the
+  remaining 19 genuine violations (verified via Python's character-accurate `len()`, not shell
+  `awk` which can over-count multi-byte UTF-8 sequences as more than one character).
+
+### Added
+
+- Sandbox stdlib verifier (`scripts/verify_no_pytest.py`) strengthened with regression coverage
+  for all bugs above: invalid dtype/logging Literal rejection, EWMA no-false-alarm-on-stable-data
+  at a statistically sound `baseline_n`, and active-learning most-novel-outlier selection with a
+  construction that doesn't hit the self-referential-centroid failure mode. None of these three
+  scenarios were previously covered by the sandbox verifier, which is why they weren't caught
+  until a real `pytest` run in CI surfaced them. 80 checks total, up from 76.
+
 ### Added
 
 - `production_vlm.utils.observability` — structured JSONL event log (`ObservabilityLogger`,

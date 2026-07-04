@@ -28,7 +28,9 @@ class TestSyntheticEmbeddingProxy:
         normal_charts = [generate_synthetic_chart(seed=i, render_image=False) for i in range(60)]
         normal_emb = encoder.encode_charts(normal_charts, style_shift_flags=[False] * 60)
 
-        shifted_charts = [generate_synthetic_chart(seed=1000 + i, style_shift=True, render_image=False) for i in range(60)]
+        shifted_charts = [
+            generate_synthetic_chart(seed=1000 + i, style_shift=True, render_image=False) for i in range(60)
+        ]
         shifted_emb = encoder.encode_charts(shifted_charts, style_shift_flags=[True] * 60)
 
         centroid = normal_emb.mean(axis=0)
@@ -39,7 +41,9 @@ class TestSyntheticEmbeddingProxy:
 
     def test_higher_shift_magnitude_increases_separation(self):
         charts_normal = [generate_synthetic_chart(seed=i, render_image=False) for i in range(30)]
-        charts_shifted = [generate_synthetic_chart(seed=2000 + i, style_shift=True, render_image=False) for i in range(30)]
+        charts_shifted = [
+            generate_synthetic_chart(seed=2000 + i, style_shift=True, render_image=False) for i in range(30)
+        ]
 
         def centroid_distance(magnitude: float) -> float:
             encoder = SyntheticEmbeddingProxy(embedding_dim=64, seed=0, shift_magnitude=magnitude)

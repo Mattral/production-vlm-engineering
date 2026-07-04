@@ -91,7 +91,9 @@ class HallucinationGuard:
                 reasoning=f"faithfulness={score:.3f} < flag_threshold={self.config.flag_threshold}",
             )
 
-    def check_batch(self, predictions: list[str], references: list[str], evidence_texts: list[str]) -> list[GuardResult]:
+    def check_batch(
+        self, predictions: list[str], references: list[str], evidence_texts: list[str]
+    ) -> list[GuardResult]:
         if not (len(predictions) == len(references) == len(evidence_texts)):
             raise ValueError("predictions, references, and evidence_texts must have the same length")
         return [self.check(p, r, e) for p, r, e in zip(predictions, references, evidence_texts)]

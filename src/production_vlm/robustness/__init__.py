@@ -16,7 +16,12 @@ Modules:
 
 from production_vlm.robustness.guard import GuardConfig, GuardDecision, GuardResult, HallucinationGuard
 from production_vlm.robustness.ood import KNNOODDetector, OODResult
-from production_vlm.robustness.perturbations import NaturalPerturbation, PerturbationResult, apply_perturbation, pgd_attack
+from production_vlm.robustness.perturbations import (
+    NaturalPerturbation,
+    PerturbationResult,
+    apply_perturbation,
+    pgd_attack,
+)
 
 __all__ = [
     "GuardConfig",

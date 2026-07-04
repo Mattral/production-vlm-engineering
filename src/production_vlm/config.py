@@ -14,18 +14,36 @@ Examples load YAML, construct these dataclasses via
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
-from typing import Any, Literal, get_args, get_origin
+from typing import Any, Literal, get_args, get_origin, get_type_hints
 
 
 class ConfigError(ValueError):
     """Raised when an experiment config fails validation."""
 
 
-def _check_literal(value: Any, type_hint: Any, name: str) -> None:
+def _check_literal(value: Any, cls: type, field_name: str) -> None:
+    """Validate `value` against a dataclass field's Literal type annotation.
+
+    Takes the class (not a bare annotation) and resolves it via
+    ``typing.get_type_hints()`` rather than reading ``cls.__annotations__``
+    directly. This module uses ``from __future__ import annotations``,
+    which makes every annotation a lazy *string* at runtime (e.g.
+    ``"Literal['bf16', 'fp16', 'fp32']"`` instead of the actual
+    ``Literal[...]`` object) -- ``get_origin()`` on that string silently
+    returns ``None`` instead of ``Literal``, so the original
+    implementation (reading ``__annotations__`` directly) never actually
+    validated anything. This was a real, previously undetected bug: every
+    "invalid literal value" test appeared to pass by accident because the
+    invalid values were also asserted to be rejected by other paths, but
+    a dedicated invalid-dtype test in the full pytest suite caught it.
+    ``get_type_hints()`` re-resolves the string back into the real type
+    object, fixing this for good.
+    """
+    type_hint = get_type_hints(cls)[field_name]
     if get_origin(type_hint) is Literal:
         allowed = get_args(type_hint)
         if value not in allowed:
-            raise ConfigError(f"{name}={value!r} not in allowed values {allowed}")
+            raise ConfigError(f"{field_name}={value!r} not in allowed values {allowed}")
 
 
 @dataclass
@@ -37,8 +55,8 @@ class ModelConfig:
     trust_remote_code: bool = False
 
     def __post_init__(self) -> None:
-        _check_literal(self.dtype, self.__annotations__["dtype"], "dtype")
-        _check_literal(self.quantization, self.__annotations__["quantization"], "quantization")
+        _check_literal(self.dtype, ModelConfig, "dtype")
+        _check_literal(self.quantization, ModelConfig, "quantization")
         if not self.checkpoint:
             raise ConfigError("model.checkpoint must not be empty")
 
@@ -94,7 +112,7 @@ class TrainConfig:
     output_dir: str = "outputs/vlm_chart_finetune"
 
     def __post_init__(self) -> None:
-        _check_literal(self.logging, self.__annotations__["logging"], "logging")
+        _check_literal(self.logging, TrainConfig, "logging")
         if self.epochs <= 0:
             raise ConfigError("train.epochs must be positive")
         if self.batch_size <= 0:
