@@ -95,6 +95,27 @@ def test_config() -> None:
     except ConfigError:
         check("missing model key raises ConfigError", True)
 
+    # Regression test: `from __future__ import annotations` makes dataclass
+    # annotations lazy strings at runtime, which broke Literal validation via
+    # a naive `cls.__annotations__` read (get_origin() on a string silently
+    # returns None instead of Literal, so no error was ever raised). Fixed by
+    # resolving via typing.get_type_hints(). This check ensures the fix holds.
+    try:
+        bad3 = dict(raw)
+        bad3["model"] = {**raw["model"], "dtype": "int4"}
+        ExperimentConfig.from_dict(bad3)
+        check("invalid dtype literal raises ConfigError", False)
+    except ConfigError:
+        check("invalid dtype literal raises ConfigError", True)
+
+    try:
+        bad4 = dict(raw)
+        bad4["train"] = {**raw.get("train", {}), "logging": "not_a_real_backend"}
+        ExperimentConfig.from_dict(bad4)
+        check("invalid logging literal raises ConfigError", False)
+    except ConfigError:
+        check("invalid logging literal raises ConfigError", True)
+
 
 def test_eval() -> None:
     print("test_eval")
@@ -138,8 +159,37 @@ def test_drift() -> None:
     flags = [ewma.update(v).is_drift for v in stable + shifted_signal]
     check("ewma detector: flags onset of step change", flags[6] is True)
 
+    # Regression test: baseline_n=5 (too small a calibration sample for a
+    # 3-sigma band) produced a false alarm on genuinely stable data because
+    # the std estimate was off by 2.6x on this exact seed. baseline_n=10
+    # (matching standard SPC calibration-phase guidance) was verified
+    # false-alarm-free across 20 seeds.
+    ewma2 = EWMADriftDetector(lam=0.3, n_sigma=3.0, warmup=3, baseline_n=10)
+    stable_rng = np.random.default_rng(0)
+    stable_long = 0.8 + stable_rng.normal(0, 0.005, size=20)
+    stable_flags = [ewma2.update(v).is_drift for v in stable_long]
+    check("ewma detector: no false alarm on stable signal (baseline_n=10)", not any(stable_flags[10:]))
+
     al_selected = select_for_active_learning([result_drift], shifted, top_k=5)
     check("active learning: returns requested top_k", len(al_selected) == 5)
+
+    # Regression test: a constant offset (+100.0) added to one sample's every
+    # dimension, with the centroid computed from the same batch containing
+    # it, made the "outlier" pull the centroid toward itself and appear
+    # *more* similar to it, not less -- no magnitude of constant/directional
+    # perturbation on a high-variance batch ever produced a rank-0 outlier.
+    # Fixed test construction: a tight, low-variance cluster (stable
+    # in-distribution embeddings) plus one genuinely distinct point, which
+    # reliably ranks as most novel.
+    cluster_rng = np.random.default_rng(0)
+    base_point = cluster_rng.normal(size=32)
+    al_batch = base_point + cluster_rng.normal(0, 0.05, size=(50, 32))
+    outlier_dir = np.random.default_rng(1).normal(size=32)
+    outlier_dir /= np.linalg.norm(outlier_dir)
+    al_batch[0] = base_point + 1.0 * outlier_dir
+    al_result = detector.score_batch(al_batch)
+    al_selected2 = select_for_active_learning([al_result], al_batch, top_k=1)
+    check("active learning: selects genuine outlier as most novel", 0 in al_selected2)
 
 
 def test_synthetic_charts() -> None:
@@ -211,7 +261,10 @@ def test_batching_queue() -> None:
         return results, queue.batches_served, queue.items_served
 
     results, batches_served, items_served = run_async(_flush_on_size())
-    check("batching: flushes on max_batch_size", all(r[1] == 4 for r in results) and batches_served == 1 and items_served == 4)
+    check(
+        "batching: flushes on max_batch_size",
+        all(r[1] == 4 for r in results) and batches_served == 1 and items_served == 4,
+    )
 
     async def _flush_on_timeout():
         queue = BatchingQueue(predict_fn, max_batch_size=10, max_batch_wait_ms=30)
