@@ -62,3 +62,18 @@ merely exists.
 - **Five examples, not four**: `vlm_video_temporal` added as the P1-04 "minimal runnable template" the roadmap explicitly accepts. It demonstrates real frame-sampling algorithms (L1 scene-change detection, adaptive motion-based sampling) and is intentionally forward-pointing rather than feature-complete.
 
 - **Structured JSON extraction** added to `vlm_chart_finetune` (P0-02 roadmap line 101: "structured output (JSON for chart values)"): `_CHART_JSON_SCHEMA`, `_extract_structured_json`, `_structured_extraction_accuracy` with schema validity rate, numeric MAPE, and category coverage — a real before/after table showing 40% → 0% MAPE improvement.
+
+- **A genuinely non-deterministic bug shipped silently for multiple sessions before a real `pytest`
+  CI run caught it.** `SyntheticEmbeddingProxy._chart_to_vector()` used Python's built-in `hash()`
+  on a string, which is randomized per-process by default (`PYTHONHASHSEED`). Every embedding
+  computed from chart metadata — and therefore every OOD detection rate, drift detection outcome,
+  and robustness metric — silently varied run-to-run despite every other seed in the pipeline
+  being fully deterministic. This never surfaced in this sandbox's own `verify_no_pytest.py` runs
+  because that script happened to only ever run once per invocation with whatever hash seed that
+  process got, and every single run "passed" on its own terms. It only surfaced when a *real* CI
+  environment ran the test suite and, on that particular invocation's hash seed, an assertion
+  landed on the wrong side of a threshold. Fixed with `zlib.crc32` (a genuinely deterministic hash)
+  and verified stable across 10 independent process invocations. The broader lesson: a stdlib-only
+  fallback verifier that can't install pytest is still valuable, but running the *same* fixed-seed
+  test exactly once per session is not the same guarantee as running it across many independent
+  process invocations — non-determinism bugs specifically hide from single-invocation testing.

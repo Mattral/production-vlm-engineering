@@ -1,16 +1,16 @@
 # Production VLM Engineering — Benchmark Report
 
-Generated: `2026-06-30T05:21:37Z`  |  Total wall time: `22.0s`
+Generated: `2026-07-04T17:11:30Z`  |  Total wall time: `14.1s`
 
 ## Summary
 
 | Example | Status | Elapsed | Tags |
 |---|---|---|---|
-| `vlm_chart_finetune` | ✅ pass | 6.4s | `fine-tuning`, `VLM`, `chart-QA` |
-| `embedding_drift_active_learning` | ✅ pass | 1.8s | `MLOps`, `drift-detection`, `active-learning` |
-| `vlm_edge_inference` | ✅ pass | 1.7s | `inference`, `quantization`, `edge` |
-| `vlm_robustness_guard` | ✅ pass | 9.2s | `robustness`, `safety`, `OOD`, `hallucination` |
-| `vlm_video_temporal` | ✅ pass | 2.8s | `video`, `temporal`, `multi-frame`, `P1-04` |
+| `vlm_chart_finetune` | ✅ pass | 3.9s | `fine-tuning`, `VLM`, `chart-QA` |
+| `embedding_drift_active_learning` | ✅ pass | 1.2s | `MLOps`, `drift-detection`, `active-learning` |
+| `vlm_edge_inference` | ✅ pass | 1.1s | `inference`, `quantization`, `edge` |
+| `vlm_robustness_guard` | ✅ pass | 6.0s | `robustness`, `safety`, `OOD`, `hallucination` |
+| `vlm_video_temporal` | ✅ pass | 2.0s | `video`, `temporal`, `multi-frame`, `P1-04` |
 
 ## Headline Metrics
 
@@ -34,7 +34,7 @@ Generated: `2026-06-30T05:21:37Z`  |  Total wall time: `22.0s`
 
 | Metric | Value |
 |---|---|
-| INT8 speedup vs fp32 | `3.923` |
+| INT8 speedup vs fp32 | `3.814` |
 | Mode | ⚠️ CPU smoke-test (install `ml`/`onnx` extras + GPU for real numbers) |
 
 ### vlm_robustness_guard
@@ -42,7 +42,7 @@ Generated: `2026-06-30T05:21:37Z`  |  Total wall time: `22.0s`
 | Metric | Value |
 |---|---|
 | OOD TP rate | `1.000` |
-| OOD FP rate | `0.100` |
+| OOD FP rate | `0.125` |
 | Guard precision | `1.000` |
 | Guard recall | `1.000` |
 
