@@ -50,7 +50,13 @@ _CATEGORY_GROUPS = [
     ["Q1", "Q2", "Q3", "Q4"],
     ["EU", "US", "APAC", "LATAM"],
 ]
-_METRIC_POOL = [("Revenue", "USD M"), ("Active Users", "K"), ("Latency", "ms"), ("Conversion Rate", "%"), ("Throughput", "req/s")]
+_METRIC_POOL = [
+    ("Revenue", "USD M"),
+    ("Active Users", "K"),
+    ("Latency", "ms"),
+    ("Conversion Rate", "%"),
+    ("Throughput", "req/s"),
+]
 
 
 def generate_synthetic_chart(
@@ -82,7 +88,12 @@ def generate_synthetic_chart(
     category_group = rng.choice(_CATEGORY_GROUPS)
     n_categories = min(len(category_group), rng.randint(4, len(category_group)))
     categories = rng.sample(category_group, n_categories)
-    dimension_name = "Region" if categories[0] in _CATEGORY_GROUPS[0] else ("Quarter" if categories[0] in _CATEGORY_GROUPS[1] else "Market")
+    if categories[0] in _CATEGORY_GROUPS[0]:
+        dimension_name = "Region"
+    elif categories[0] in _CATEGORY_GROUPS[1]:
+        dimension_name = "Quarter"
+    else:
+        dimension_name = "Market"
     base = rng.uniform(10, 100)
     values = [max(0.1, base + np_rng.normal(0, base * 0.35)) for _ in categories]
 
@@ -101,14 +112,15 @@ def generate_synthetic_chart(
             fig.patch.set_facecolor("#f0f0e8")
             ax.set_facecolor("#f0f0e8")
 
+        palette_colors = palette[: len(categories)] if len(palette) >= len(categories) else palette * 3
         if chart_type == "bar":
-            ax.bar(categories, values, color=palette[: len(categories)] if len(palette) >= len(categories) else palette * 3)
+            ax.bar(categories, values, color=palette_colors)
             ax.set_ylabel(f"{metric_name} ({units})")
         elif chart_type == "line":
             ax.plot(categories, values, marker="o", color=palette[0], linewidth=2)
             ax.set_ylabel(f"{metric_name} ({units})")
         else:  # pie
-            ax.pie(values, labels=categories, autopct="%1.1f%%", colors=palette[: len(categories)] if len(palette) >= len(categories) else palette * 3)
+            ax.pie(values, labels=categories, autopct="%1.1f%%", colors=palette_colors)
 
         ax.set_title(title, fontsize=13, fontweight="bold")
         fig.tight_layout()
@@ -158,7 +170,9 @@ def generate_synthetic_chart(
     )
 
 
-def generate_dataset(n: int, seed: int = 0, style_shift_fraction: float = 0.0, render_image: bool = True) -> list[SyntheticChart]:
+def generate_dataset(
+    n: int, seed: int = 0, style_shift_fraction: float = 0.0, render_image: bool = True
+) -> list[SyntheticChart]:
     """Generate a list of synthetic charts, optionally injecting style-shifted samples.
 
     ``style_shift_fraction`` controls what fraction of the tail of the
