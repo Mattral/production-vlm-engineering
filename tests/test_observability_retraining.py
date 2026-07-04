@@ -81,7 +81,12 @@ class TestObservabilityLogger:
     def test_summary_counts_correctly(self, log_path):
         logger = ObservabilityLogger(log_path)
         for i in range(4):
-            logger.log_drift_event(i, 25, is_drift_ks=(i >= 2), is_drift_ewma=False, ks_stat=0.1, p_value=0.5, batch_mean_similarity=0.75, al_selected_count=3 if i >= 2 else 0)
+            logger.log_drift_event(
+                i, 25,
+                is_drift_ks=(i >= 2), is_drift_ewma=False,
+                ks_stat=0.1, p_value=0.5, batch_mean_similarity=0.75,
+                al_selected_count=3 if i >= 2 else 0,
+            )
         logger.log_ood_event(True, 0.7, 0.3, 0.35)
         logger.log_guard_event("pass", 0.8, 0.9, 0.65)
         summary = logger.summary()
@@ -253,7 +258,8 @@ class TestStructuredExtraction:
     def test_schema_valid_on_ground_truth(self):
         """Extraction from ground-truth metadata must always produce a valid schema."""
         import sys
-        sys.path.insert(0, str(__import__("pathlib").Path(__file__).parents[1] / "examples" / "pipelines" / "vlm_chart_finetune"))
+        ft_dir = Path(__file__).parents[1] / "examples" / "pipelines" / "vlm_chart_finetune"
+        sys.path.insert(0, str(ft_dir))
         from run import _extract_structured_json, _CHART_JSON_SCHEMA
 
         from production_vlm.utils.synthetic_charts import generate_synthetic_chart
@@ -267,7 +273,8 @@ class TestStructuredExtraction:
     def test_structured_accuracy_zero_shot_has_errors(self):
         """Zero-shot simulation should produce nonzero MAPE."""
         import sys
-        sys.path.insert(0, str(__import__("pathlib").Path(__file__).parents[1] / "examples" / "pipelines" / "vlm_chart_finetune"))
+        ft_dir = Path(__file__).parents[1] / "examples" / "pipelines" / "vlm_chart_finetune"
+        sys.path.insert(0, str(ft_dir))
         from run import _structured_extraction_accuracy
 
         from production_vlm.utils.synthetic_charts import generate_synthetic_chart
@@ -280,7 +287,8 @@ class TestStructuredExtraction:
     def test_structured_accuracy_finetuned_is_perfect(self):
         """Fine-tuned simulation (exact GT) should score 100% schema valid, 0% MAPE."""
         import sys
-        sys.path.insert(0, str(__import__("pathlib").Path(__file__).parents[1] / "examples" / "pipelines" / "vlm_chart_finetune"))
+        ft_dir = Path(__file__).parents[1] / "examples" / "pipelines" / "vlm_chart_finetune"
+        sys.path.insert(0, str(ft_dir))
         from run import _structured_extraction_accuracy
 
         from production_vlm.utils.synthetic_charts import generate_synthetic_chart
