@@ -88,7 +88,10 @@ def _load_predict_fn():
         except ImportError:
             pass
 
-    console.print("[yellow]No exported ONNX model / onnxruntime found -- serving with the synthetic benchmark backbone.[/yellow]")
+    console.print(
+        "[yellow]No exported ONNX model / onnxruntime found -- "
+        "serving with the synthetic benchmark backbone.[/yellow]"
+    )
     from examples.pipelines.vlm_edge_inference.run import _SyntheticBackbone
 
     model = _SyntheticBackbone(quantized=False)

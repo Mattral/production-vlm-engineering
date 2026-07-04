@@ -204,9 +204,18 @@ def _structured_extraction_accuracy(eval_set, noise_zero_shot: bool = False) -> 
         gt = _extract_structured_json(chart)
 
         if noise_zero_shot:
-            # Simulate zero-shot: ~40% schema failure, ~30% MAPE on values
+            # Simulate zero-shot: ~40% schema failure, ~30% MAPE on values.
+            #
+            # Seeded by chart.style_seed, NOT hash(chart.title): Python
+            # randomizes string hashing per-process by default (PYTHONHASHSEED),
+            # so hash()-based seeding is not reproducible across runs -- and
+            # since chart titles are drawn from a small combinatorial pool
+            # (metric x dimension), multiple charts can share the same title,
+            # making hash(title)-derived draws non-independent across charts
+            # that happen to collide. style_seed is unique per chart by
+            # construction, giving genuinely independent, reproducible draws.
             import random
-            rng = random.Random(hash(chart.title) % 2**32)
+            rng = random.Random(chart.style_seed)
             if rng.random() < 0.4:
                 pred = {"chart_type": chart.chart_type, "title": chart.title}  # missing 'series'
             else:
@@ -235,7 +244,8 @@ def _structured_extraction_accuracy(eval_set, noise_zero_shot: bool = False) -> 
         pred_vals = {s["category"]: s["value"] for s in pred.get("series", [])}
         common_cats = set(gt_vals) & set(pred_vals)
         if common_cats:
-            mape = float(sum(abs(gt_vals[c] - pred_vals[c]) / max(abs(gt_vals[c]), 1e-9) for c in common_cats) / len(common_cats))
+            errors = [abs(gt_vals[c] - pred_vals[c]) / max(abs(gt_vals[c]), 1e-9) for c in common_cats]
+            mape = float(sum(errors) / len(common_cats))
         else:
             mape = 1.0
         mape_vals.append(mape)
@@ -353,7 +363,10 @@ def main(config_path: str | None = None) -> dict:
             "(data generation, config validation, and the real evaluation harness) with "
             "simulated model outputs standing in for actual generations.[/yellow]"
         )
-        console.print("[yellow]Install `pip install -e \".[ml]\"` and run on a CUDA host for genuine fine-tuning numbers.[/yellow]")
+        console.print(
+            "[yellow]Install `pip install -e \".[ml]\"` and run on a CUDA host "
+            "for genuine fine-tuning numbers.[/yellow]"
+        )
         with timer("evaluation"):
             zero_shot = _zero_shot_baseline(eval_set, cfg)
             finetuned = _lora_finetuned_simulation(eval_set, cfg)
@@ -367,7 +380,14 @@ def main(config_path: str | None = None) -> dict:
             structured_zero_shot = _structured_extraction_accuracy(bar_eval_set, noise_zero_shot=True)
             structured_finetuned = _structured_extraction_accuracy(bar_eval_set, noise_zero_shot=False)
         else:
-            structured_zero_shot = structured_finetuned = {"schema_validity_rate": 0, "numeric_extraction_mape": 1, "category_coverage": 0, "n_samples": 0, "schema": {}}
+            empty_result = {
+                "schema_validity_rate": 0,
+                "numeric_extraction_mape": 1,
+                "category_coverage": 0,
+                "n_samples": 0,
+                "schema": {},
+            }
+            structured_zero_shot = structured_finetuned = empty_result
 
     console.table(
         title="Zero-shot vs LoRA Fine-tuned (Faithfulness Score)",

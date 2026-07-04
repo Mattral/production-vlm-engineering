@@ -79,9 +79,14 @@ def _build_reference_set(encoder: SyntheticEmbeddingProxy, n: int, seed: int) ->
     return encoder.encode_charts(charts, style_shift_flags=[False] * n)
 
 
-def _build_stream_batch(encoder: SyntheticEmbeddingProxy, batch_idx: int, batch_size: int, seed: int, is_drifted: bool) -> tuple[np.ndarray, list]:
+def _build_stream_batch(
+    encoder: SyntheticEmbeddingProxy, batch_idx: int, batch_size: int, seed: int, is_drifted: bool
+) -> tuple[np.ndarray, list]:
     base_seed = seed + batch_idx * batch_size
-    charts = [generate_synthetic_chart(seed=base_seed + i, style_shift=is_drifted, render_image=False) for i in range(batch_size)]
+    charts = [
+        generate_synthetic_chart(seed=base_seed + i, style_shift=is_drifted, render_image=False)
+        for i in range(batch_size)
+    ]
     embeddings = encoder.encode_charts(charts, style_shift_flags=[is_drifted] * batch_size)
     return embeddings, charts
 
@@ -92,7 +97,11 @@ def main(config_path: str | None = None) -> dict:
 
     console.rule(f"[bold cyan]Embedding Drift Detection & Active Learning: {cfg['name']}[/bold cyan]")
 
-    encoder = SyntheticEmbeddingProxy(embedding_dim=cfg["embedding_dim"], seed=cfg["reference"]["seed"], shift_magnitude=cfg.get("shift_magnitude", 12.0))
+    encoder = SyntheticEmbeddingProxy(
+        embedding_dim=cfg["embedding_dim"],
+        seed=cfg["reference"]["seed"],
+        shift_magnitude=cfg.get("shift_magnitude", 12.0),
+    )
     console.print(
         f"Embedding source: [bold]{cfg['embedding_source']}[/bold] (dim={cfg['embedding_dim']}). "
         "Swap for production_vlm.utils.vision_encoder.RealVisionEncoder for a genuine DINOv3/SigLIP-2 space."
@@ -157,7 +166,9 @@ def main(config_path: str | None = None) -> dict:
 
             al_selected = np.array([], dtype=int)
             if flagged:
-                al_selected = select_for_active_learning([ks_result], embeddings, top_k=cfg["active_learning"]["top_k_per_batch"])
+                al_selected = select_for_active_learning(
+                    [ks_result], embeddings, top_k=cfg["active_learning"]["top_k_per_batch"]
+                )
                 al_queue_total += len(al_selected)
 
                 # Enqueue into the retraining trigger with novelty scores.
@@ -228,12 +239,16 @@ def main(config_path: str | None = None) -> dict:
     if detection_batch is not None:
         console.print(
             f"[bold green]Drift detected at batch {detection_batch} "
-            f"(true shift started at batch {ground_truth_start}, detection delay = {detection_delay} batches).[/bold green]"
+            f"(true shift started at batch {ground_truth_start}, "
+            f"detection delay = {detection_delay} batches).[/bold green]"
         )
     else:
         console.print("[red]Drift was injected but never flagged -- check detector thresholds.[/red]")
 
-    console.print(f"Active learning queue accumulated {al_queue_total} samples flagged for human labeling / retraining.")
+    console.print(
+        f"Active learning queue accumulated {al_queue_total} samples "
+        f"flagged for human labeling / retraining."
+    )
 
     obs_summary = obs_logger.summary()
     retrain_summary = retrain_trigger.summary()
@@ -280,7 +295,10 @@ def main(config_path: str | None = None) -> dict:
         console.print(f"[yellow]Plot generation skipped: {e}[/yellow]")
 
     console.print(f"[bold green]Results → {out_path}[/bold green]")
-    console.print(f"[bold green]Observability events: {obs_logger.log_path} ({obs_summary['total_events']} events)[/bold green]")
+    console.print(
+        f"[bold green]Observability events: {obs_logger.log_path} "
+        f"({obs_summary['total_events']} events)[/bold green]"
+    )
     return results
 
 
@@ -326,7 +344,11 @@ def benchmark() -> None:
 def main_with_cfg(cfg: dict) -> dict:
     """Variant of main() that accepts an in-memory config dict instead of a path, used by benchmark()."""
     set_seed(cfg["reference"]["seed"])
-    encoder = SyntheticEmbeddingProxy(embedding_dim=cfg["embedding_dim"], seed=cfg["reference"]["seed"], shift_magnitude=cfg.get("shift_magnitude", 12.0))
+    encoder = SyntheticEmbeddingProxy(
+        embedding_dim=cfg["embedding_dim"],
+        seed=cfg["reference"]["seed"],
+        shift_magnitude=cfg.get("shift_magnitude", 12.0),
+    )
     reference_embeddings = _build_reference_set(encoder, cfg["reference"]["n_samples"], cfg["reference"]["seed"])
     cosine_detector = CosineDriftDetector(reference_embeddings, alpha=cfg["detector"]["cosine_alpha"])
     ewma_detector = EWMADriftDetector(
@@ -340,7 +362,9 @@ def main_with_cfg(cfg: dict) -> dict:
     ground_truth_start = cfg["stream"]["drift_starts_at_batch"]
     for batch_idx in range(cfg["stream"]["n_batches"]):
         is_drifted_batch = batch_idx >= ground_truth_start
-        embeddings, _ = _build_stream_batch(encoder, batch_idx, cfg["stream"]["batch_size"], cfg["stream"]["seed"], is_drifted_batch)
+        embeddings, _ = _build_stream_batch(
+            encoder, batch_idx, cfg["stream"]["batch_size"], cfg["stream"]["seed"], is_drifted_batch
+        )
         ks_result = cosine_detector.score_batch(embeddings)
         ewma_result = ewma_detector.update(ks_result.batch_mean_similarity)
         flagged = ks_result.is_drift or ewma_result.is_drift

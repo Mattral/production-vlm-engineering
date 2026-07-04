@@ -127,7 +127,13 @@ def _synthetic_frame_sequence(seed: int, n_frames: int = 5, add_scene_change: bo
             chart = generate_synthetic_chart(seed=seed + i, render_image=False)
             chart = type(chart)(
                 image=pert.perturbed_image,
-                **{k: getattr(chart, k) for k in ["chart_type","title","categories","values","units","question","answer","evidence_text","style_seed","plot_bbox"]},
+                **{
+                    k: getattr(chart, k)
+                    for k in [
+                        "chart_type", "title", "categories", "values", "units",
+                        "question", "answer", "evidence_text", "style_seed", "plot_bbox",
+                    ]
+                },
             )
         frames.append(VideoFrame(frame_idx=i, image=chart.image, chart_metadata=chart, timestamp_s=i * 0.5))
     return frames
@@ -320,7 +326,8 @@ def detect_scene_changes_via_embedding(frames: list[VideoFrame], encoder: Synthe
 # ---------------------------------------------------------------------------
 
 def main(config_path: str | None = None) -> dict:
-    cfg_path = Path(config_path) if config_path else Path(__file__).resolve().parents[3] / "configs" / "vlm_video_temporal.yaml"
+    default_cfg_path = Path(__file__).resolve().parents[3] / "configs" / "vlm_video_temporal.yaml"
+    cfg_path = Path(config_path) if config_path else default_cfg_path
     import yaml
     cfg = yaml.safe_load(cfg_path.read_text())
 
@@ -378,7 +385,8 @@ def main(config_path: str | None = None) -> dict:
 
     console.print("")
     console.print("[dim]Scene change detection via embedding drift (last clip):[/dim]")
-    console.print(f"  Frame indices flagged as scene changes: {scene_changes if scene_changes else '(none above threshold)'}")
+    scene_msg = scene_changes if scene_changes else "(none above threshold)"
+    console.print(f"  Frame indices flagged as scene changes: {scene_msg}")
     console.print("  → The same CosineDriftDetector from P0-04 detects scene boundaries.")
 
     output_dir = Path("outputs/vlm_video_temporal")

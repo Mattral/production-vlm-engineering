@@ -283,7 +283,10 @@ def run_ood_benchmark(cfg: dict) -> dict:
     holdout_emb = encoder.encode_charts(holdout, style_shift_flags=[False] * ocfg["n_holdout"])
     fp_rate = sum(r.is_ood for r in detector.score_batch(holdout_emb)) / ocfg["n_holdout"]
 
-    shifted = [generate_synthetic_chart(seed=3000 + i, style_shift=True, render_image=False) for i in range(ocfg["n_shifted"])]
+    shifted = [
+        generate_synthetic_chart(seed=3000 + i, style_shift=True, render_image=False)
+        for i in range(ocfg["n_shifted"])
+    ]
     shifted_emb = encoder.encode_charts(shifted, style_shift_flags=[True] * ocfg["n_shifted"])
     tp_rate = sum(r.is_ood for r in detector.score_batch(shifted_emb)) / ocfg["n_shifted"]
 
@@ -327,7 +330,10 @@ def run_guard_evaluation(cfg: dict) -> dict:
             # a high faithfulness despite being incorrect -- a real limitation of
             # numeric-accuracy-based faithfulness that this fix sidesteps cleanly.
             fake_value = round(max(chart.values) * 3.0, 1)
-            prediction = f"Based on the chart, the value for {chart.categories[0]} is {fake_value} which is the highest category shown."
+            prediction = (
+                f"Based on the chart, the value for {chart.categories[0]} is {fake_value} "
+                f"which is the highest category shown."
+            )
         else:
             # Correct answer with light paraphrase (simulates a well-grounded response)
             prediction = chart.answer.replace("has", "shows").replace("which is", "making it")
@@ -388,7 +394,10 @@ def main(config_path: str | None = None) -> dict:
     set_seed(cfg["reference"]["seed"])
 
     console.rule("[bold cyan]VLM Robustness & Safety Guard: P1-02[/bold cyan]")
-    console.print("Four components: natural perturbation sweep, adversarial robustness (PGD), OOD detection, hallucination guard.")
+    console.print(
+        "Four components: natural perturbation sweep, adversarial robustness (PGD), "
+        "OOD detection, hallucination guard."
+    )
     console.print("")
 
     output_dir = Path(cfg["output_dir"])

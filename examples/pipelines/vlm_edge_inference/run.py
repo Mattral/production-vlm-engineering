@@ -221,7 +221,9 @@ class _SyntheticBackbone:
         self.quantized = quantized
         self._compute_dim = int(hidden_dim * self._INT8_EFFECTIVE_WIDTH_FACTOR) if quantized else hidden_dim
         rng = np.random.default_rng(42)
-        self.weights = [rng.normal(size=(self._compute_dim, self._compute_dim)).astype(np.float32) for _ in range(n_layers)]
+        self.weights = [
+            rng.normal(size=(self._compute_dim, self._compute_dim)).astype(np.float32) for _ in range(n_layers)
+        ]
 
     def run(self, batch: np.ndarray) -> np.ndarray:
         n_patches = batch.shape[2] * batch.shape[3] // (16 * 16)
@@ -285,7 +287,10 @@ def main(config_path: str | None = None) -> dict:
     results_detail = []
 
     if real_stack:
-        console.print("[green]onnx/onnxruntime/torch/transformers detected -- running real export + quantization path.[/green]")
+        console.print(
+            "[green]onnx/onnxruntime/torch/transformers detected -- "
+            "running real export + quantization path.[/green]"
+        )
         with timer("export to ONNX"):
             fp32_path = export_real_model_to_onnx(cfg)
         with timer("dynamic INT8 quantization"):
@@ -295,7 +300,8 @@ def main(config_path: str | None = None) -> dict:
         console.print(
             "[yellow]No onnx/onnxruntime/torch/transformers + network stack detected -- running the "
             "benchmark harness against a synthetic compute-equivalent backbone. Install "
-            "`pip install -e \".[ml,onnx]\"` with network access and re-run for real ONNX/quantization numbers.[/yellow]"
+            "`pip install -e \".[ml,onnx]\"` with network access "
+            "and re-run for real ONNX/quantization numbers.[/yellow]"
         )
         model_paths = {"fp32": None, "dynamic_int8": None}
 
@@ -305,7 +311,9 @@ def main(config_path: str | None = None) -> dict:
                 if real_stack:
                     metrics = benchmark_onnx_session(model_paths[variant], cfg, image_size, batch_size)
                 else:
-                    metrics = benchmark_synthetic_backbone(cfg, quantized=(variant == "dynamic_int8"), image_size=image_size, batch_size=batch_size)
+                    metrics = benchmark_synthetic_backbone(
+                        cfg, quantized=(variant == "dynamic_int8"), image_size=image_size, batch_size=batch_size
+                    )
                 metrics["accuracy_retention"] = _accuracy_retention_proxy(quantized=(variant == "dynamic_int8"))
                 metrics.update({"variant": variant, "image_size": image_size, "batch_size": batch_size})
                 results_detail.append(metrics)
@@ -323,7 +331,10 @@ def main(config_path: str | None = None) -> dict:
 
     console.table(
         title="Before/After: fp32 vs dynamic INT8" + ("" if real_stack else " (synthetic-graph benchmark)"),
-        columns=["Variant", "Image Size", "Batch", "Latency (ms)", "Throughput (img/s)", "Peak Mem (MB)", "Accuracy Retained"],
+        columns=[
+            "Variant", "Image Size", "Batch", "Latency (ms)",
+            "Throughput (img/s)", "Peak Mem (MB)", "Accuracy Retained",
+        ],
         rows=rows,
     )
 
