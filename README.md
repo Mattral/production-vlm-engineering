@@ -80,7 +80,7 @@ scripts/verify_no_pytest.py  stdlib-only verifier (no pytest needed, runs in CI)
 git clone https://github.com/Mattral/production-vlm-engineering
 cd production-vlm-engineering
 make setup                # ~15s, CPU-only install
-cv-playbook list-examples # see all four examples
+production-vlm list-examples # see all five examples
 ```
 
 Run all examples and generate a unified benchmark report:
@@ -95,8 +95,8 @@ For real GPU fine-tuning and ONNX export:
 
 ```bash
 make setup-gpu            # adds torch / transformers / peft / onnxruntime
-cv-playbook run-example vlm_chart_finetune
-cv-playbook run-example vlm_edge_inference
+production-vlm run-example vlm_chart_finetune
+production-vlm run-example vlm_edge_inference
 ```
 
 ---

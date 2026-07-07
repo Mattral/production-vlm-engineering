@@ -2,7 +2,7 @@
 
 ## Overview
 
-The repo has two layers: a shared library (`src/production_vlm/`) with no hard ML dependencies, and four example pipelines that import from it. Every example has the same structural contract — a `main(config_path=None)` entry point, a YAML config with pinned checkpoint dates, and a `results.json` output — so the benchmark runner can collect and compare them without example-specific logic.
+The repo has two layers: a shared library (`src/production_vlm/`) with no hard ML dependencies, and five example pipelines that import from it. Every example has the same structural contract — a `main(config_path=None)` entry point, a YAML config with pinned checkpoint dates, and a `results.json` output — so the benchmark runner can collect and compare them without example-specific logic.
 
 ```mermaid
 graph TD
@@ -22,7 +22,7 @@ graph TD
     end
 
     subgraph infra["Infrastructure"]
-        CLI["production-vlm CLI<br/>cv-playbook run-example &lt;name&gt;"]
+        CLI["production-vlm CLI<br/>production-vlm run-example &lt;name&gt;"]
         BENCH["benchmarks/run_all.py<br/>Unified report"]
         CI[".github/workflows/ci.yml<br/>lint · test · smoke · docker"]
     end

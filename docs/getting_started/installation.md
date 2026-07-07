@@ -6,7 +6,7 @@ The package is split into tiers so you only install what you need. The core libr
 
 | Tier | Command | What it enables |
 |---|---|---|
-| **Core** (always) | `pip install -e .` | All shared library code, all four CPU smoke-test paths |
+| **Core** (always) | `pip install -e .` | All shared library code, all five CPU smoke-test paths |
 | **CLI** | `pip install -e ".[cli]"` | `rich` table output, `typer` CLI (gracefully degrades without this) |
 | **ML** (GPU) | `pip install -e ".[ml]"` | Real LoRA fine-tuning, real vision encoder inference |
 | **ONNX** | `pip install -e ".[onnx]"` | Real ONNX export and quantization |
@@ -19,7 +19,7 @@ The package is split into tiers so you only install what you need. The core libr
     ```bash
     make setup
     # → installs core + cli + dev extras
-    # → all four examples run in smoke-test mode
+    # → all five examples run in smoke-test mode
     # → 40 tests pass, verify_no_pytest.py passes
     ```
 
@@ -56,7 +56,7 @@ make test
 python scripts/verify_no_pytest.py
 
 # Check the CLI works
-cv-playbook list-examples
+production-vlm list-examples
 ```
 
 ## Model checkpoints

@@ -12,9 +12,9 @@ CPU-only fallback path so any claim in this repo can be checked without GPU acce
 git clone https://github.com/Mattral/production-vlm-engineering
 cd production-vlm-engineering
 make setup                              # CPU-only install (~15 seconds)
-cv-playbook list-examples               # list all four examples
-cv-playbook run-example embedding_drift_active_learning   # fastest (<1s)
-python benchmarks/run_all.py            # run all four, generate unified benchmark report
+production-vlm list-examples               # list all five examples
+production-vlm run-example embedding_drift_active_learning   # fastest (<1s)
+python benchmarks/run_all.py            # run all five, generate unified benchmark report
 ```
 
 ## Four examples
