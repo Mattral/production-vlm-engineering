@@ -1,4 +1,4 @@
-# Lightweight CPU image: runs all three example pipelines in their
+# Lightweight CPU image: runs all five example pipelines in their
 # honest CPU-fallback mode (no GPU, no torch/transformers required).
 # For real GPU fine-tuning/export, see docker/Dockerfile.gpu.
 FROM python:3.11-slim
@@ -17,6 +17,7 @@ COPY examples ./examples
 COPY configs ./configs
 COPY tests ./tests
 COPY scripts ./scripts
+COPY benchmarks ./benchmarks
 
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -e ".[dev,cli]"

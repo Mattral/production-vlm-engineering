@@ -22,6 +22,7 @@ COPY examples ./examples
 COPY configs ./configs
 COPY tests ./tests
 COPY scripts ./scripts
+COPY benchmarks ./benchmarks
 
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -e ".[dev,cli,ml,onnx,serving]"
