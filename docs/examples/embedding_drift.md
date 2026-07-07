@@ -44,7 +44,7 @@ When either detector fires, `select_for_active_learning()` ranks the batch by di
 ## Run it
 
 ```bash
-cv-playbook run-example embedding_drift_active_learning
+production-vlm run-example embedding_drift_active_learning
 ```
 
 ```
@@ -55,7 +55,7 @@ Active learning queue accumulated 30 samples flagged for labeling / retraining
 ## Sensitivity sweep
 
 ```bash
-cv-playbook benchmark embedding_drift_active_learning
+production-vlm benchmark embedding_drift_active_learning
 ```
 
 Sweeps the injected shift magnitude from subtle (magnitude 1.0) to obvious (magnitude 18.0) and reports detection delay at each level. At low magnitudes the detector correctly fails to trigger — this is the honest sensitivity/specificity tradeoff, not hidden.

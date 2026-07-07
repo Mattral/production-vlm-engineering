@@ -39,7 +39,7 @@ To use a real dataset (ChartQA, DocVQA, etc.), replace the `generate_dataset()` 
 
 === "CPU smoke test"
     ```bash
-    cv-playbook run-example vlm_chart_finetune
+    production-vlm run-example vlm_chart_finetune
     # Generates 48 synthetic charts, runs real evaluation harness
     # with simulated model outputs, writes results.json in ~5s
     ```
@@ -48,7 +48,7 @@ To use a real dataset (ChartQA, DocVQA, etc.), replace the `generate_dataset()` 
     ```bash
     pip install -e ".[ml]"
     # Requires CUDA + ≥12GB VRAM for the default 2B checkpoint
-    cv-playbook run-example vlm_chart_finetune
+    production-vlm run-example vlm_chart_finetune
     ```
 
 ## Results (CPU smoke-test)

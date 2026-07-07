@@ -62,12 +62,12 @@ curl -X POST http://localhost:8000/predict \
 ## Run it
 
 ```bash
-cv-playbook run-example vlm_edge_inference
+production-vlm run-example vlm_edge_inference
 ```
 
 For real ONNX export and quantization (requires the `ml` + `onnx` extras and network access):
 
 ```bash
 pip install -e ".[ml,onnx]"
-cv-playbook run-example vlm_edge_inference
+production-vlm run-example vlm_edge_inference
 ```

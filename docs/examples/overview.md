@@ -1,12 +1,12 @@
 # Examples Overview
 
-All four examples share the same CLI interface:
+All five examples share the same CLI interface:
 
 ```bash
-cv-playbook list-examples
-cv-playbook run-example <name>
-cv-playbook run-example <name> --config path/to/custom.yaml
-cv-playbook benchmark <name>    # where implemented
+production-vlm list-examples
+production-vlm run-example <name>
+production-vlm run-example <name> --config path/to/custom.yaml
+production-vlm benchmark <name>    # where implemented
 ```
 
 ## At a glance

@@ -85,7 +85,7 @@ Latest benchmark: precision 1.0, recall 1.0 on the injected hallucination test s
 ## Run it
 
 ```bash
-cv-playbook run-example vlm_robustness_guard
+production-vlm run-example vlm_robustness_guard
 ```
 
 All three components run in ~6s on CPU.

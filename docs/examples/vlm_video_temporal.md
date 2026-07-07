@@ -25,7 +25,7 @@ Three things, all genuinely runnable on CPU:
 ## Run it
 
 ```bash
-cv-playbook run-example vlm_video_temporal
+production-vlm run-example vlm_video_temporal
 ```
 
 Runs in ~3s on CPU. No real video files needed.
