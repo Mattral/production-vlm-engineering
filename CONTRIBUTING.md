@@ -20,7 +20,7 @@ make test                              # requires `pip install -e ".[dev]"`
 python scripts/verify_no_pytest.py     # stdlib-only fallback check
 ```
 
-If you're changing one of the three example pipelines, actually run it (`production-vlm
+If you're changing one of the five example pipelines, actually run it (`production-vlm
 run-example <name>`) and check the printed table/`results.json` make sense -- don't just
 read the diff. Several real bugs in this repo's own history (see `ROADMAP.md`'s "Design
 decisions worth recording" section) were only caught by running the code, not by reading it.

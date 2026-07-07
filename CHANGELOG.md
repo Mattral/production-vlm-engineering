@@ -9,6 +9,57 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Fixed (found by real `ruff check`/`ruff format`, installed and run directly)
+
+- **63 real ruff lint errors** across `src/`, `tests/`, `examples/`, `benchmarks/`, `scripts/`:
+  18× `B905` (`zip()` without explicit `strict=`, now `strict=True` everywhere since every
+  zipped pair is guaranteed or expected to be equal-length by construction), 3× `E741`
+  (ambiguous variable name `l`, renamed to `label`), 3× `F841` (unused locals: a leftover
+  `processor` variable in the real ONNX-export path that isn't needed since the dummy input is a
+  raw tensor not a tokenized one; a genuinely dead `combined_result`/`combined_evidence`
+  computation in the temporal grounding metric; an unused `results` binding in a batching-queue
+  test), 1× `B007` (unused loop variable `i` from a stale `enumerate()` wrapper). Verified
+  `ruff check src tests examples benchmarks scripts` now reports zero errors, and reran the full
+  pytest suite (104 tests) plus all 5 examples end-to-end afterward to confirm none of these
+  fixes changed behavior.
+
+- **24 files failed `ruff format --check`** (whitespace/wrapping normalization only, no logic
+  changes) — applied `ruff format` and reverified pytest + all 5 examples pass identically.
+
+- **`legacy/cv-playbook-original/` was not excluded from ruff's scope**, meaning any lint
+  invocation that scans the whole repo (`ruff check .`, some pre-commit configurations) would
+  flood output with unrelated errors from the preserved original "from scratch" educational
+  Python scripts (20 files) that were never meant to be linted to this repo's standard. Added
+  `exclude = ["legacy", "notebooks"]` to `[tool.ruff]` in `pyproject.toml` (notebooks are
+  standalone tutorial content, never part of CI's actual lint scope, and holding demo-cell code
+  to the same bar as production source doesn't serve a purpose); verified `ruff check .` now
+  produces zero errors when scanning the entire repository.
+
+- **Stale `cv-playbook` CLI command name in 16 documentation files.** The package was renamed
+  from `cv-playbook`/`cv_playbook` to `production-vlm`/`production_vlm` in an earlier session,
+  and `pyproject.toml`'s actual installed script entry point is `production-vlm`, but README.md,
+  CONTRIBUTING.md, the PR template, and 12 files under `docs/` still told readers to run
+  `cv-playbook list-examples` / `cv-playbook run-example <name>` — a command that does not exist
+  post-rename and would fail with "command not found" for anyone following the quickstart
+  verbatim. Fixed via a scoped regex substitution that only touches actual command invocations
+  (`cv-playbook` immediately followed by `list-examples`, `run-example`, or `benchmark`), not any
+  incidental prose mention of the old name.
+
+- **Stale "three"/"four example(s)" counts across 6 files**, left over from when the repo had
+  three then four examples before `vlm_video_temporal` (P1-04) was added. Fixed in README.md,
+  CONTRIBUTING.md, `vlm_robustness_guard/README.md`, and 4 files under `docs/`.
+
+- **`vlm_robustness_guard/README.md` documented 3 components, but the pipeline has had 4 since
+  the adversarial-robustness (PGD) component was added earlier this session** — the README's
+  component table, section numbering, and "Files" summary were never updated to include it.
+  Added the missing "Component 2: Adversarial robustness (PGD proxy)" section and renumbered
+  the rest.
+
+- **Dockerfiles said "three example pipelines" and didn't copy `benchmarks/`** into the image,
+  both stale relative to the current 5-example, benchmark-runner-equipped state of the repo.
+  Fixed the comment and added `COPY benchmarks ./benchmarks` to both `docker/Dockerfile` and
+  `docker/Dockerfile.gpu`.
+
 ### Fixed (found by real CI/pytest run, not the sandbox stdlib verifier)
 
 - **`SyntheticEmbeddingProxy` embeddings were silently non-deterministic across process runs**,

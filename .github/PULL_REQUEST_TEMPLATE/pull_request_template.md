@@ -10,11 +10,11 @@ Brief description of the change. If it adds a new example, state the headline me
 - [ ] `python scripts/verify_no_pytest.py` passes (40 checks, no pytest needed)
 - [ ] `make test` passes (if pytest is available in your environment)
 - [ ] `make lint` passes (ruff check + format)
-- [ ] `cv-playbook list-examples` still lists all expected examples
+- [ ] `production-vlm list-examples` still lists all expected examples
 - [ ] All existing `results.json` outputs look sane after change
 
 ### Required for new or changed examples
-- [ ] I actually ran the example (`cv-playbook run-example <name>`) and checked the output
+- [ ] I actually ran the example (`production-vlm run-example <name>`) and checked the output
 - [ ] CPU-fallback behavior is clearly labeled in console output and in `results.json`
 - [ ] Any new threshold or parameter was calibrated empirically, not chosen by intuition
 - [ ] The calibration sweep is documented in the code (docstring or inline comment)
