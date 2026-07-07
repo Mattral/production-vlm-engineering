@@ -359,10 +359,9 @@ def test_robustness() -> None:
     check("guard returns fallback message on reject", bad.output_text == guard.config.fallback_message)
 
 
-
 def test_observability_retraining() -> None:
     print("test_observability_retraining")
-    import tempfile, threading
+    import tempfile
     from pathlib import Path
 
     # ObservabilityLogger
@@ -387,6 +386,7 @@ def test_observability_retraining() -> None:
 
     # RetrainingTrigger
     import numpy as np
+
     def make_sample(i):
         return QueuedSample(i, i // 5, float(np.random.default_rng(i).uniform()), "drift_ks")
 
@@ -417,7 +417,9 @@ def test_observability_retraining() -> None:
     check("retrain: cooldown blocks multi-fire", len(fired4) == 1)
 
     # Error in callback recorded, not propagated
-    def bad_cb(s): raise RuntimeError("fail")
+    def bad_cb(s):
+        raise RuntimeError("fail")
+
     t5 = RetrainingTrigger(queue_threshold=3, callback=bad_cb, cooldown_s=0)
     for i in range(3):
         t5.enqueue(make_sample(i))
@@ -432,16 +434,13 @@ def test_observability_retraining() -> None:
         check("retrain: invalid threshold raises", True)
 
 
-
-
 def test_structured_extraction() -> None:
     print("test_structured_extraction")
     import importlib.util
 
     # Load the chart finetune run module without executing __main__
     spec = importlib.util.spec_from_file_location(
-        "ft_run",
-        str(Path(__file__).parent.parent / "examples" / "pipelines" / "vlm_chart_finetune" / "run.py")
+        "ft_run", str(Path(__file__).parent.parent / "examples" / "pipelines" / "vlm_chart_finetune" / "run.py")
     )
     ft_mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(ft_mod)
@@ -467,10 +466,16 @@ def test_structured_extraction() -> None:
     check("struct: zero-shot schema validity <100%", r_zero["schema_validity_rate"] < 1.0)
     check("struct: zero-shot MAPE >0%", r_zero["numeric_extraction_mape"] > 0.0)
 
+
 def main() -> int:
     suites = [
-        test_config, test_eval, test_drift, test_synthetic_charts,
-        test_vision_encoder, test_batching_queue, test_robustness,
+        test_config,
+        test_eval,
+        test_drift,
+        test_synthetic_charts,
+        test_vision_encoder,
+        test_batching_queue,
+        test_robustness,
         test_observability_retraining,
         test_structured_extraction,
     ]

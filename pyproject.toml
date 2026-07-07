@@ -55,6 +55,7 @@ packages = ["src/production_vlm"]
 [tool.ruff]
 line-length = 120
 target-version = "py310"
+exclude = ["legacy", "notebooks"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
