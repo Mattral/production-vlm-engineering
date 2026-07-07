@@ -123,9 +123,7 @@ class TrainConfig:
 
 @dataclass
 class EvalConfig:
-    metrics: list[str] = field(
-        default_factory=lambda: ["numeric_accuracy", "grounding_score", "faithfulness_score"]
-    )
+    metrics: list[str] = field(default_factory=lambda: ["numeric_accuracy", "grounding_score", "faithfulness_score"])
     num_eval_samples: int = 50
 
     def __post_init__(self) -> None:

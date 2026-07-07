@@ -17,9 +17,28 @@ except ImportError:
 
 
 _KNOWN_TAGS = (
-    "bold", "/bold", "red", "/red", "green", "/green", "yellow", "/yellow",
-    "cyan", "/cyan", "magenta", "/magenta", "blue", "/blue", "dim", "/dim",
-    "bold cyan", "/bold cyan", "bold green", "/bold green", "bold red", "/bold red",
+    "bold",
+    "/bold",
+    "red",
+    "/red",
+    "green",
+    "/green",
+    "yellow",
+    "/yellow",
+    "cyan",
+    "/cyan",
+    "magenta",
+    "/magenta",
+    "blue",
+    "/blue",
+    "dim",
+    "/dim",
+    "bold cyan",
+    "/bold cyan",
+    "bold green",
+    "/bold green",
+    "bold red",
+    "/bold red",
 )
 
 
@@ -60,8 +79,8 @@ class Console:
         else:
             print(f"\n{title}")
             widths = [max(len(str(c)) for c in [col, *[r[i] for r in rows]]) for i, col in enumerate(columns)]
-            header = "  ".join(c.ljust(w) for c, w in zip(columns, widths))
+            header = "  ".join(c.ljust(w) for c, w in zip(columns, widths, strict=True))
             print(header)
             print("-" * len(header))
             for row in rows:
-                print("  ".join(str(c).ljust(w) for c, w in zip(row, widths)))
+                print("  ".join(str(c).ljust(w) for c, w in zip(row, widths, strict=True)))

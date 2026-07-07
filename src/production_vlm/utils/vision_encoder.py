@@ -122,7 +122,7 @@ class SyntheticEmbeddingProxy:
         """Encode SyntheticChart objects directly (preferred — carries true style_shift signal)."""
         flags = style_shift_flags or [False] * len(charts)
         vectors = []
-        for chart, is_shift in zip(charts, flags):
+        for chart, is_shift in zip(charts, flags, strict=True):
             v = self._chart_to_vector(chart)
             if is_shift:
                 # Real OOD style shift in a vision encoder shows up as a

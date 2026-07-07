@@ -136,10 +136,10 @@ def generate_synthetic_chart(
         dpi = fig.dpi
         fig_h = fig.get_figheight() * dpi
         plot_bbox = (
-            int(bbox.x0),                  # x_left
-            int(bbox.x1),                  # x_right
-            int(fig_h - bbox.y1),          # y_top  (matplotlib y-axis is bottom-up; image is top-down)
-            int(fig_h - bbox.y0),          # y_bottom
+            int(bbox.x0),  # x_left
+            int(bbox.x1),  # x_right
+            int(fig_h - bbox.y1),  # y_top  (matplotlib y-axis is bottom-up; image is top-down)
+            int(fig_h - bbox.y0),  # y_bottom
         )
 
         buf = io.BytesIO()
@@ -153,7 +153,7 @@ def generate_synthetic_chart(
     max_idx = int(np.argmax(values))
     question = f"What is the {metric_name.lower()} for {categories[max_idx]}, and is it the highest category?"
     answer = f"{categories[max_idx]} has {metric_name.lower()} of {values[max_idx]:.1f} {units}, which is the highest."
-    evidence_text = "; ".join(f"{c}: {v:.1f} {units}" for c, v in zip(categories, values))
+    evidence_text = "; ".join(f"{c}: {v:.1f} {units}" for c, v in zip(categories, values, strict=True))
 
     return SyntheticChart(
         image=image,

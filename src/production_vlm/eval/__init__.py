@@ -90,9 +90,29 @@ def grounding_score(prediction: str, evidence_text: str, min_token_len: int = 3)
     score with function words.
     """
     stop_words = {
-        "the", "and", "for", "with", "that", "this", "from", "are", "was",
-        "were", "has", "have", "had", "but", "not", "what", "which", "value",
-        "data", "chart", "shows", "show", "according",
+        "the",
+        "and",
+        "for",
+        "with",
+        "that",
+        "this",
+        "from",
+        "are",
+        "was",
+        "were",
+        "has",
+        "have",
+        "had",
+        "but",
+        "not",
+        "what",
+        "which",
+        "value",
+        "data",
+        "chart",
+        "shows",
+        "show",
+        "according",
     }
 
     def tokens(text: str) -> set[str]:

@@ -134,19 +134,21 @@ class ObservabilityLogger:
         al_selected_count: int = 0,
         extra: dict | None = None,
     ) -> None:
-        self._write(DriftEvent(
-            batch_idx=batch_idx,
-            batch_size=batch_size,
-            is_drift_ks=is_drift_ks,
-            is_drift_ewma=is_drift_ewma,
-            ks_stat=ks_stat,
-            p_value=p_value,
-            batch_mean_similarity=batch_mean_similarity,
-            ewma_mean=ewma_mean,
-            ewma_lower_cl=ewma_lower_cl,
-            al_selected_count=al_selected_count,
-            extra=extra or {},
-        ))
+        self._write(
+            DriftEvent(
+                batch_idx=batch_idx,
+                batch_size=batch_size,
+                is_drift_ks=is_drift_ks,
+                is_drift_ewma=is_drift_ewma,
+                ks_stat=ks_stat,
+                p_value=p_value,
+                batch_mean_similarity=batch_mean_similarity,
+                ewma_mean=ewma_mean,
+                ewma_lower_cl=ewma_lower_cl,
+                al_selected_count=al_selected_count,
+                extra=extra or {},
+            )
+        )
 
     def log_ood_event(
         self,
@@ -156,13 +158,15 @@ class ObservabilityLogger:
         threshold: float,
         extra: dict | None = None,
     ) -> None:
-        self._write(OODEvent(
-            is_ood=is_ood,
-            ood_score=ood_score,
-            nearest_neighbor_similarity=nearest_neighbor_similarity,
-            threshold=threshold,
-            extra=extra or {},
-        ))
+        self._write(
+            OODEvent(
+                is_ood=is_ood,
+                ood_score=ood_score,
+                nearest_neighbor_similarity=nearest_neighbor_similarity,
+                threshold=threshold,
+                extra=extra or {},
+            )
+        )
 
     def log_guard_event(
         self,
@@ -172,13 +176,15 @@ class ObservabilityLogger:
         grounding_score: float,
         extra: dict | None = None,
     ) -> None:
-        self._write(GuardEvent(
-            decision=decision,
-            faithfulness_score=faithfulness_score,
-            numeric_score=numeric_score,
-            grounding_score=grounding_score,
-            extra=extra or {},
-        ))
+        self._write(
+            GuardEvent(
+                decision=decision,
+                faithfulness_score=faithfulness_score,
+                numeric_score=numeric_score,
+                grounding_score=grounding_score,
+                extra=extra or {},
+            )
+        )
 
     def read_all(self) -> list[dict]:
         if not self.log_path.exists():
@@ -219,23 +225,33 @@ class ObservabilityLogger:
 
 
 class _NoOpCounter:
-    def inc(self, amount: float = 1.0) -> None: pass
-    def labels(self, **kw): return self
+    def inc(self, amount: float = 1.0) -> None:
+        pass
+
+    def labels(self, **kw):
+        return self
 
 
 class _NoOpGauge:
-    def set(self, value: float) -> None: pass
-    def labels(self, **kw): return self
+    def set(self, value: float) -> None:
+        pass
+
+    def labels(self, **kw):
+        return self
 
 
 class _NoOpHistogram:
-    def observe(self, value: float) -> None: pass
-    def labels(self, **kw): return self
+    def observe(self, value: float) -> None:
+        pass
+
+    def labels(self, **kw):
+        return self
 
 
 def _try_import_prometheus():
     try:
         from prometheus_client import Counter, Gauge, Histogram, start_http_server
+
         return Counter, Gauge, Histogram, start_http_server, True
     except ImportError:
         return _NoOpCounter, _NoOpGauge, _NoOpHistogram, None, False
@@ -265,73 +281,117 @@ class PrometheusMetricsServer:
         Counter, Gauge, Histogram, self._start_fn, self._available = _try_import_prometheus()
 
         # Drift metrics
-        self.drift_batches_total = Counter(
-            f"{self.NAMESPACE}_drift_batches_total",
-            "Total batches processed by the drift detector",
-        ) if self._available else _NoOpCounter()
+        self.drift_batches_total = (
+            Counter(
+                f"{self.NAMESPACE}_drift_batches_total",
+                "Total batches processed by the drift detector",
+            )
+            if self._available
+            else _NoOpCounter()
+        )
 
-        self.drift_detected_total = Counter(
-            f"{self.NAMESPACE}_drift_detected_total",
-            "Total batches where drift was flagged",
-            ["detector"],
-        ) if self._available else _NoOpCounter()
+        self.drift_detected_total = (
+            Counter(
+                f"{self.NAMESPACE}_drift_detected_total",
+                "Total batches where drift was flagged",
+                ["detector"],
+            )
+            if self._available
+            else _NoOpCounter()
+        )
 
-        self.drift_ks_stat = Gauge(
-            f"{self.NAMESPACE}_drift_ks_stat",
-            "Most recent KS statistic from CosineDriftDetector",
-        ) if self._available else _NoOpGauge()
+        self.drift_ks_stat = (
+            Gauge(
+                f"{self.NAMESPACE}_drift_ks_stat",
+                "Most recent KS statistic from CosineDriftDetector",
+            )
+            if self._available
+            else _NoOpGauge()
+        )
 
-        self.drift_batch_mean_similarity = Gauge(
-            f"{self.NAMESPACE}_drift_batch_mean_similarity",
-            "Most recent batch mean cosine similarity to reference centroid",
-        ) if self._available else _NoOpGauge()
+        self.drift_batch_mean_similarity = (
+            Gauge(
+                f"{self.NAMESPACE}_drift_batch_mean_similarity",
+                "Most recent batch mean cosine similarity to reference centroid",
+            )
+            if self._available
+            else _NoOpGauge()
+        )
 
-        self.drift_al_queued_total = Counter(
-            f"{self.NAMESPACE}_drift_al_queued_total",
-            "Total samples queued for active-learning labeling",
-        ) if self._available else _NoOpCounter()
+        self.drift_al_queued_total = (
+            Counter(
+                f"{self.NAMESPACE}_drift_al_queued_total",
+                "Total samples queued for active-learning labeling",
+            )
+            if self._available
+            else _NoOpCounter()
+        )
 
         # OOD metrics
-        self.ood_checked_total = Counter(
-            f"{self.NAMESPACE}_ood_checked_total",
-            "Total samples checked by the OOD detector",
-        ) if self._available else _NoOpCounter()
+        self.ood_checked_total = (
+            Counter(
+                f"{self.NAMESPACE}_ood_checked_total",
+                "Total samples checked by the OOD detector",
+            )
+            if self._available
+            else _NoOpCounter()
+        )
 
-        self.ood_flagged_total = Counter(
-            f"{self.NAMESPACE}_ood_flagged_total",
-            "Total samples flagged as out-of-distribution",
-        ) if self._available else _NoOpCounter()
+        self.ood_flagged_total = (
+            Counter(
+                f"{self.NAMESPACE}_ood_flagged_total",
+                "Total samples flagged as out-of-distribution",
+            )
+            if self._available
+            else _NoOpCounter()
+        )
 
-        self.ood_score = Histogram(
-            f"{self.NAMESPACE}_ood_score",
-            "OOD score distribution (1 - nearest_neighbor_similarity)",
-            buckets=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        ) if self._available else _NoOpHistogram()
+        self.ood_score = (
+            Histogram(
+                f"{self.NAMESPACE}_ood_score",
+                "OOD score distribution (1 - nearest_neighbor_similarity)",
+                buckets=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+            )
+            if self._available
+            else _NoOpHistogram()
+        )
 
         # Guard metrics
-        self.guard_checked_total = Counter(
-            f"{self.NAMESPACE}_guard_checked_total",
-            "Total answers checked by the hallucination guard",
-        ) if self._available else _NoOpCounter()
+        self.guard_checked_total = (
+            Counter(
+                f"{self.NAMESPACE}_guard_checked_total",
+                "Total answers checked by the hallucination guard",
+            )
+            if self._available
+            else _NoOpCounter()
+        )
 
-        self.guard_decisions_total = Counter(
-            f"{self.NAMESPACE}_guard_decisions_total",
-            "Guard decisions by outcome",
-            ["decision"],
-        ) if self._available else _NoOpCounter()
+        self.guard_decisions_total = (
+            Counter(
+                f"{self.NAMESPACE}_guard_decisions_total",
+                "Guard decisions by outcome",
+                ["decision"],
+            )
+            if self._available
+            else _NoOpCounter()
+        )
 
-        self.guard_faithfulness = Histogram(
-            f"{self.NAMESPACE}_guard_faithfulness",
-            "Faithfulness score distribution",
-            buckets=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        ) if self._available else _NoOpHistogram()
+        self.guard_faithfulness = (
+            Histogram(
+                f"{self.NAMESPACE}_guard_faithfulness",
+                "Faithfulness score distribution",
+                buckets=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+            )
+            if self._available
+            else _NoOpHistogram()
+        )
 
     def start(self) -> None:
         """Start the HTTP metrics server in a background daemon thread."""
         if not self._available:
             print(
-                f"[observability] prometheus_client not installed -- metrics server not started. "
-                f"Install with: pip install prometheus_client"
+                "[observability] prometheus_client not installed -- metrics server not started. "
+                "Install with: pip install prometheus_client"
             )
             return
         self._start_fn(self.port)

@@ -22,14 +22,13 @@ Usage:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import numpy as np
 
+matplotlib.use("Agg")
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import numpy as np
 
 _STYLE = {
     "figure.facecolor": "white",
@@ -54,6 +53,7 @@ def _apply_style():
 # P0-02: vlm_chart_finetune — before/after faithfulness
 # ---------------------------------------------------------------------------
 
+
 def plot_faithfulness_comparison(
     zero_shot_score: float,
     finetuned_score: float,
@@ -70,27 +70,33 @@ def plot_faithfulness_comparison(
     bars = ax1.bar(
         ["Zero-shot", "LoRA fine-tuned"],
         [zero_shot_score, finetuned_score],
-        color=[_PALETTE[1], _PALETTE[0]], width=0.45, zorder=3,
+        color=[_PALETTE[1], _PALETTE[0]],
+        width=0.45,
+        zorder=3,
     )
     ax1.set_ylim(0, 1.05)
     ax1.set_ylabel("Mean Faithfulness Score")
     ax1.set_title("Faithfulness (↑ better)")
-    for bar, val in zip(bars, [zero_shot_score, finetuned_score]):
-        ax1.text(bar.get_x() + bar.get_width() / 2, val + 0.02,
-                 f"{val:.3f}", ha="center", va="bottom", fontweight="bold")
+    for bar, val in zip(bars, [zero_shot_score, finetuned_score], strict=True):
+        ax1.text(
+            bar.get_x() + bar.get_width() / 2, val + 0.02, f"{val:.3f}", ha="center", va="bottom", fontweight="bold"
+        )
 
     # Structured extraction MAPE
     bars2 = ax2.bar(
         ["Zero-shot", "LoRA fine-tuned"],
         [structured_zero_shot_mape * 100, structured_finetuned_mape * 100],
-        color=[_PALETTE[1], _PALETTE[0]], width=0.45, zorder=3,
+        color=[_PALETTE[1], _PALETTE[0]],
+        width=0.45,
+        zorder=3,
     )
     ax2.set_ylim(0, max(structured_zero_shot_mape * 100 * 1.3, 5))
     ax2.set_ylabel("Numeric MAPE (%)")
     ax2.set_title("Structured Extraction MAPE (↓ better)")
-    for bar, val in zip(bars2, [structured_zero_shot_mape * 100, structured_finetuned_mape * 100]):
-        ax2.text(bar.get_x() + bar.get_width() / 2, val + 0.5,
-                 f"{val:.1f}%", ha="center", va="bottom", fontweight="bold")
+    for bar, val in zip(bars2, [structured_zero_shot_mape * 100, structured_finetuned_mape * 100], strict=True):
+        ax2.text(
+            bar.get_x() + bar.get_width() / 2, val + 0.5, f"{val:.1f}%", ha="center", va="bottom", fontweight="bold"
+        )
 
     fig.tight_layout()
     out = Path(output_path)
@@ -103,6 +109,7 @@ def plot_faithfulness_comparison(
 # ---------------------------------------------------------------------------
 # P0-04: embedding_drift_active_learning — drift timeline
 # ---------------------------------------------------------------------------
+
 
 def plot_drift_timeline(
     batch_results: list[dict],
@@ -121,8 +128,13 @@ def plot_drift_timeline(
     # KS statistic
     colors = [_PALETTE[0] if not f else _PALETTE[1] for f in ks_flags]
     ax1.bar(batches, ks_stats, color=colors, zorder=3, width=0.7)
-    ax1.axvline(drift_starts_at - 0.5, color="black", linestyle="--",
-                linewidth=1.5, label=f"Drift injected (batch {drift_starts_at})")
+    ax1.axvline(
+        drift_starts_at - 0.5,
+        color="black",
+        linestyle="--",
+        linewidth=1.5,
+        label=f"Drift injected (batch {drift_starts_at})",
+    )
     ax1.set_ylabel("KS Statistic")
     ax1.set_title("Kolmogorov-Smirnov Test Statistic per Batch")
     ax1.legend(fontsize=9)
@@ -153,6 +165,7 @@ def plot_drift_timeline(
 # P0-03: vlm_edge_inference — speedup comparison
 # ---------------------------------------------------------------------------
 
+
 def plot_benchmark_speedup(
     details: list[dict],
     output_path: str | Path,
@@ -178,20 +191,26 @@ def plot_benchmark_speedup(
     ax1.set_xticks(x)
     ax1.set_xticklabels(labels, rotation=15, ha="right")
     ax1.legend()
-    for bar, val in zip(list(b1) + list(b2), fp32_lat + int8_lat):
-        ax1.text(bar.get_x() + bar.get_width() / 2, val + 0.1,
-                 f"{val:.1f}", ha="center", va="bottom", fontsize=8)
+    for bar, val in zip(list(b1) + list(b2), fp32_lat + int8_lat, strict=True):
+        ax1.text(bar.get_x() + bar.get_width() / 2, val + 0.1, f"{val:.1f}", ha="center", va="bottom", fontsize=8)
 
-    speedups = [f / i for f, i in zip(fp32_lat, int8_lat)]
+    speedups = [f / i for f, i in zip(fp32_lat, int8_lat, strict=True)]
     ax2.bar(x, speedups, color=_PALETTE[3], zorder=3)
     ax2.axhline(1.0, color="grey", linestyle="--", linewidth=1)
     ax2.set_ylabel("Speedup (×)")
     ax2.set_title("INT8 Speedup vs fp32 (↑ better)")
     ax2.set_xticks(x)
     ax2.set_xticklabels(labels, rotation=15, ha="right")
-    for i, (bar, val) in enumerate(zip(ax2.patches, speedups)):
-        ax2.text(bar.get_x() + bar.get_width() / 2, val + 0.05,
-                 f"{val:.2f}×", ha="center", va="bottom", fontweight="bold", fontsize=9)
+    for bar, val in zip(ax2.patches, speedups, strict=True):
+        ax2.text(
+            bar.get_x() + bar.get_width() / 2,
+            val + 0.05,
+            f"{val:.2f}×",
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+            fontsize=9,
+        )
 
     fig.tight_layout()
     out = Path(output_path)
@@ -205,6 +224,7 @@ def plot_benchmark_speedup(
 # P1-02: vlm_robustness_guard — perturbation sweep heatmap
 # ---------------------------------------------------------------------------
 
+
 def plot_perturbation_sweep(
     perturbation_results: dict[str, dict[str, float]],
     output_path: str | Path,
@@ -214,10 +234,7 @@ def plot_perturbation_sweep(
     kinds = sorted(perturbation_results.keys())
     severities = sorted({float(s) for kind_data in perturbation_results.values() for s in kind_data})
 
-    matrix = np.array([
-        [perturbation_results[k].get(str(s), 0.0) for s in severities]
-        for k in kinds
-    ])
+    matrix = np.array([[perturbation_results[k].get(str(s), 0.0) for s in severities] for k in kinds])
 
     fig, ax = plt.subplots(figsize=(8, max(4, len(kinds) * 0.65)))
     fig.suptitle("Perturbation Robustness: Accuracy Heatmap", fontweight="bold", fontsize=13)
@@ -235,8 +252,7 @@ def plot_perturbation_sweep(
         for j in range(len(severities)):
             val = matrix[i, j]
             text_color = "white" if val < 0.5 else "black"
-            ax.text(j, i, f"{val:.0%}", ha="center", va="center",
-                    fontsize=9, fontweight="bold", color=text_color)
+            ax.text(j, i, f"{val:.0%}", ha="center", va="center", fontsize=9, fontweight="bold", color=text_color)
 
     fig.tight_layout()
     out = Path(output_path)
@@ -250,6 +266,7 @@ def plot_perturbation_sweep(
 # P1-02: adversarial embedding shift visualisation
 # ---------------------------------------------------------------------------
 
+
 def plot_adversarial_embedding_shift(
     adv_result: dict,
     output_path: str | Path,
@@ -259,7 +276,8 @@ def plot_adversarial_embedding_shift(
     fig, ax = plt.subplots(figsize=(7, 4))
     fig.suptitle(
         f"Adversarial Robustness (ε={adv_result['epsilon_budget_8_255']:.4f}, {adv_result['mode']})",
-        fontweight="bold", fontsize=12,
+        fontweight="bold",
+        fontsize=12,
     )
 
     metrics = {
@@ -276,15 +294,24 @@ def plot_adversarial_embedding_shift(
     ax.set_ylim(0, 1.15)
     ax.set_ylabel("Score")
 
-    for bar, val in zip(bars, metrics.values()):
-        ax.text(bar.get_x() + bar.get_width() / 2, val + 0.02,
-                f"{val:.3f}", ha="center", va="bottom", fontweight="bold", fontsize=10)
+    for bar, val in zip(bars, metrics.values(), strict=True):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            val + 0.02,
+            f"{val:.3f}",
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+            fontsize=10,
+        )
 
     ax.annotate(
         "Low OOD catch rate on proxy attack = embedding guard is robust to pixel noise.\n"
         "Real PGD (gradient-based) requires pip install -e '[ml]' + CUDA.",
-        xy=(0.01, 0.01), xycoords="axes fraction",
-        fontsize=8, color="grey",
+        xy=(0.01, 0.01),
+        xycoords="axes fraction",
+        fontsize=8,
+        color="grey",
     )
 
     fig.tight_layout()

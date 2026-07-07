@@ -22,24 +22,27 @@ from __future__ import annotations
 import threading
 import time
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 
 @dataclass
 class QueuedSample:
     """A sample flagged for labeling/retraining, with provenance metadata."""
+
     embedding_index: int
     batch_idx: int
-    novelty_score: float           # distance-from-centroid proxy for labeling priority
-    flagged_by: str                # "drift_ks" | "drift_ewma" | "ood" | "active_learning"
+    novelty_score: float  # distance-from-centroid proxy for labeling priority
+    flagged_by: str  # "drift_ks" | "drift_ewma" | "ood" | "active_learning"
     timestamp_utc: float = field(default_factory=time.time)
-    pseudo_label: Any = None       # set by a labeling callback when available
+    pseudo_label: Any = None  # set by a labeling callback when available
 
 
 @dataclass
 class RetrainingRun:
     """Record of one retraining trigger invocation."""
+
     trigger_id: int
     n_samples: int
     triggered_at_utc: float
@@ -139,24 +142,28 @@ class RetrainingTrigger:
         t0 = time.time()
         try:
             self.callback(samples)
-            self._history.append(RetrainingRun(
-                trigger_id=trigger_id,
-                n_samples=len(samples),
-                triggered_at_utc=t0,
-                trigger_reason=f"queue_threshold={self.queue_threshold} reached",
-                success=True,
-                duration_s=time.time() - t0,
-            ))
+            self._history.append(
+                RetrainingRun(
+                    trigger_id=trigger_id,
+                    n_samples=len(samples),
+                    triggered_at_utc=t0,
+                    trigger_reason=f"queue_threshold={self.queue_threshold} reached",
+                    success=True,
+                    duration_s=time.time() - t0,
+                )
+            )
         except Exception as e:
-            self._history.append(RetrainingRun(
-                trigger_id=trigger_id,
-                n_samples=len(samples),
-                triggered_at_utc=t0,
-                trigger_reason=f"queue_threshold={self.queue_threshold} reached",
-                success=False,
-                error=str(e),
-                duration_s=time.time() - t0,
-            ))
+            self._history.append(
+                RetrainingRun(
+                    trigger_id=trigger_id,
+                    n_samples=len(samples),
+                    triggered_at_utc=t0,
+                    trigger_reason=f"queue_threshold={self.queue_threshold} reached",
+                    success=False,
+                    error=str(e),
+                    duration_s=time.time() - t0,
+                )
+            )
 
     @property
     def queue_size(self) -> int:

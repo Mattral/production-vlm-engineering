@@ -27,8 +27,8 @@ with real image pipelines alike.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Literal
 
 import numpy as np
 from PIL import Image, ImageFilter
@@ -137,8 +137,8 @@ def apply_perturbation(image: Image.Image, kind: str, severity: float, seed: int
 
 
 def pgd_attack(
-    model: "object",
-    image_tensor: "object",
+    model: object,
+    image_tensor: object,
     target_loss_fn: Callable,
     epsilon: float = 8 / 255,
     alpha: float = 2 / 255,
@@ -168,7 +168,7 @@ def pgd_attack(
         import torch
     except ImportError as e:
         raise ImportError(
-            "pgd_attack requires PyTorch (the `ml` extra: pip install -e \".[ml]\"). "
+            'pgd_attack requires PyTorch (the `ml` extra: pip install -e ".[ml]"). '
             "A numpy-only approximation would not be a real gradient-based attack, "
             "so this raises rather than silently substituting a weaker check."
         ) from e

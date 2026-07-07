@@ -96,4 +96,4 @@ class HallucinationGuard:
     ) -> list[GuardResult]:
         if not (len(predictions) == len(references) == len(evidence_texts)):
             raise ValueError("predictions, references, and evidence_texts must have the same length")
-        return [self.check(p, r, e) for p, r, e in zip(predictions, references, evidence_texts)]
+        return [self.check(p, r, e) for p, r, e in zip(predictions, references, evidence_texts, strict=True)]

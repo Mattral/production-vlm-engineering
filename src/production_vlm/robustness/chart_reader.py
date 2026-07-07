@@ -19,12 +19,15 @@ def _estimate_background_color(arr: np.ndarray) -> np.ndarray:
     """Sample the four image corners to estimate the background color adaptively."""
     h, w = arr.shape[:2]
     margin = max(2, min(h, w) // 40)
-    corners = np.concatenate([
-        arr[:margin, :margin].reshape(-1, 3),
-        arr[:margin, -margin:].reshape(-1, 3),
-        arr[-margin:, :margin].reshape(-1, 3),
-        arr[-margin:, -margin:].reshape(-1, 3),
-    ], axis=0)
+    corners = np.concatenate(
+        [
+            arr[:margin, :margin].reshape(-1, 3),
+            arr[:margin, -margin:].reshape(-1, 3),
+            arr[-margin:, :margin].reshape(-1, 3),
+            arr[-margin:, -margin:].reshape(-1, 3),
+        ],
+        axis=0,
+    )
     return corners.mean(axis=0)
 
 
@@ -51,14 +54,12 @@ def _find_plot_area_bounds(arr: np.ndarray) -> tuple[int, int, int, int]:
     # Max-pool over a small window to tolerate blur-smearing of the 1px spine.
     window = 3
     pad = window // 2
-    row_dark_max = np.array([
-        np.pad(row_dark_counts, pad, mode="edge")[i:i + window].max()
-        for i in range(len(row_dark_counts))
-    ])
-    col_dark_max = np.array([
-        np.pad(col_dark_counts, pad, mode="edge")[i:i + window].max()
-        for i in range(len(col_dark_counts))
-    ])
+    row_dark_max = np.array(
+        [np.pad(row_dark_counts, pad, mode="edge")[i : i + window].max() for i in range(len(row_dark_counts))]
+    )
+    col_dark_max = np.array(
+        [np.pad(col_dark_counts, pad, mode="edge")[i : i + window].max() for i in range(len(col_dark_counts))]
+    )
 
     left_candidates = np.where(col_dark_max > h * 0.4)[0]
     x_left = int(left_candidates[0]) if len(left_candidates) > 0 else 0
