@@ -62,7 +62,7 @@ class TestBatchingQueue:
         async def submit_one(i):
             return await queue.submit(np.full((2,), i, dtype=np.float32))
 
-        results = await asyncio.gather(*[submit_one(i) for i in range(7)])
+        await asyncio.gather(*[submit_one(i) for i in range(7)])
         await queue.stop()
 
         assert queue.items_served == 7

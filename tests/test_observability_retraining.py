@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import threading
-import time
 from pathlib import Path
 
 import numpy as np
@@ -13,13 +12,12 @@ import pytest
 from production_vlm.utils.observability import ObservabilityLogger, PrometheusMetricsServer
 from production_vlm.utils.retraining import QueuedSample, RetrainingTrigger
 
-
 # ---------------------------------------------------------------------------
 # ObservabilityLogger tests
 # ---------------------------------------------------------------------------
 
-class TestObservabilityLogger:
 
+class TestObservabilityLogger:
     @pytest.fixture
     def log_path(self, tmp_path) -> Path:
         return tmp_path / "events.jsonl"
@@ -49,9 +47,12 @@ class TestObservabilityLogger:
     def test_drift_event_has_required_fields(self, log_path):
         logger = ObservabilityLogger(log_path)
         logger.log_drift_event(
-            batch_idx=3, batch_size=50,
-            is_drift_ks=True, is_drift_ewma=False,
-            ks_stat=0.58, p_value=2e-7,
+            batch_idx=3,
+            batch_size=50,
+            is_drift_ks=True,
+            is_drift_ewma=False,
+            ks_stat=0.58,
+            p_value=2e-7,
             batch_mean_similarity=0.62,
             al_selected_count=5,
             extra={"true_drift_injected": True},
@@ -82,9 +83,13 @@ class TestObservabilityLogger:
         logger = ObservabilityLogger(log_path)
         for i in range(4):
             logger.log_drift_event(
-                i, 25,
-                is_drift_ks=(i >= 2), is_drift_ewma=False,
-                ks_stat=0.1, p_value=0.5, batch_mean_similarity=0.75,
+                i,
+                25,
+                is_drift_ks=(i >= 2),
+                is_drift_ewma=False,
+                ks_stat=0.1,
+                p_value=0.5,
+                batch_mean_similarity=0.75,
                 al_selected_count=3 if i >= 2 else 0,
             )
         logger.log_ood_event(True, 0.7, 0.3, 0.35)
@@ -122,8 +127,8 @@ class TestObservabilityLogger:
 # PrometheusMetricsServer tests (no-op when prometheus_client not installed)
 # ---------------------------------------------------------------------------
 
-class TestPrometheusMetricsServer:
 
+class TestPrometheusMetricsServer:
     def test_instantiates_without_prometheus_client(self):
         """Should never raise even when prometheus_client is absent."""
         server = PrometheusMetricsServer(port=0)
@@ -151,8 +156,8 @@ class TestPrometheusMetricsServer:
 # RetrainingTrigger tests
 # ---------------------------------------------------------------------------
 
-class TestRetrainingTrigger:
 
+class TestRetrainingTrigger:
     def _make_sample(self, i: int) -> QueuedSample:
         return QueuedSample(
             embedding_index=i,
@@ -253,16 +258,18 @@ class TestRetrainingTrigger:
 # Structured JSON extraction tests
 # ---------------------------------------------------------------------------
 
-class TestStructuredExtraction:
 
+class TestStructuredExtraction:
     def test_schema_valid_on_ground_truth(self):
         """Extraction from ground-truth metadata must always produce a valid schema."""
         import sys
+
         ft_dir = Path(__file__).parents[1] / "examples" / "pipelines" / "vlm_chart_finetune"
         sys.path.insert(0, str(ft_dir))
-        from run import _extract_structured_json, _CHART_JSON_SCHEMA
+        from run import _CHART_JSON_SCHEMA, _extract_structured_json
 
         from production_vlm.utils.synthetic_charts import generate_synthetic_chart
+
         for seed in range(10):
             chart = generate_synthetic_chart(seed=seed, render_image=False)
             extracted = _extract_structured_json(chart)
@@ -273,11 +280,13 @@ class TestStructuredExtraction:
     def test_structured_accuracy_zero_shot_has_errors(self):
         """Zero-shot simulation should produce nonzero MAPE."""
         import sys
+
         ft_dir = Path(__file__).parents[1] / "examples" / "pipelines" / "vlm_chart_finetune"
         sys.path.insert(0, str(ft_dir))
         from run import _structured_extraction_accuracy
 
         from production_vlm.utils.synthetic_charts import generate_synthetic_chart
+
         charts = [generate_synthetic_chart(seed=i, chart_type="bar", render_image=False) for i in range(20)]
         result = _structured_extraction_accuracy(charts, noise_zero_shot=True)
         # Zero-shot should have non-perfect schema validity and nonzero MAPE
@@ -287,11 +296,13 @@ class TestStructuredExtraction:
     def test_structured_accuracy_finetuned_is_perfect(self):
         """Fine-tuned simulation (exact GT) should score 100% schema valid, 0% MAPE."""
         import sys
+
         ft_dir = Path(__file__).parents[1] / "examples" / "pipelines" / "vlm_chart_finetune"
         sys.path.insert(0, str(ft_dir))
         from run import _structured_extraction_accuracy
 
         from production_vlm.utils.synthetic_charts import generate_synthetic_chart
+
         charts = [generate_synthetic_chart(seed=i, chart_type="bar", render_image=False) for i in range(20)]
         result = _structured_extraction_accuracy(charts, noise_zero_shot=False)
         assert result["schema_validity_rate"] == 1.0

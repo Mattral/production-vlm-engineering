@@ -36,12 +36,13 @@ console = Console()
 # Example descriptors
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ExampleSpec:
     name: str
     module: str
-    headline_keys: list[str]          # dot-path keys into results.json to headline
-    headline_labels: list[str]        # human labels for those keys
+    headline_keys: list[str]  # dot-path keys into results.json to headline
+    headline_labels: list[str]  # human labels for those keys
     timeout_s: int = 120
     tags: list[str] = field(default_factory=list)
 
@@ -99,6 +100,7 @@ EXAMPLES: list[ExampleSpec] = [
 # Result collection
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RunResult:
     spec: ExampleSpec
@@ -128,17 +130,23 @@ def run_example(spec: ExampleSpec, output_base: Path) -> RunResult:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     cmd = [
-        sys.executable, "-m", spec.module.replace(".", "/").replace("/py", "").replace("/run", ".run"),
+        sys.executable,
+        "-m",
+        spec.module.replace(".", "/").replace("/py", "").replace("/run", ".run"),
     ]
     # Run via importlib instead so we inherit the sys.path correctly
-    cmd = [sys.executable, "-c", f"""
+    cmd = [
+        sys.executable,
+        "-c",
+        f"""
 import sys
 sys.path.insert(0, '{REPO_ROOT / "src"}')
 sys.path.insert(0, '{REPO_ROOT}')
 import importlib
 m = importlib.import_module('{spec.module}')
 m.main()
-"""]
+""",
+    ]
 
     t0 = time.perf_counter()
     try:
@@ -151,29 +159,44 @@ m.main()
         )
         elapsed = time.perf_counter() - t0
         if proc.returncode != 0:
-            return RunResult(spec=spec, success=False, elapsed_s=elapsed, results_json={},
-                             error=proc.stderr[-2000:] if proc.stderr else "non-zero exit")
+            return RunResult(
+                spec=spec,
+                success=False,
+                elapsed_s=elapsed,
+                results_json={},
+                error=proc.stderr[-2000:] if proc.stderr else "non-zero exit",
+            )
 
         # Load results.json from canonical output location
         results_path = REPO_ROOT / "outputs" / spec.name / "results.json"
         if not results_path.exists():
-            return RunResult(spec=spec, success=False, elapsed_s=elapsed, results_json={},
-                             error=f"results.json not found at {results_path}")
+            return RunResult(
+                spec=spec,
+                success=False,
+                elapsed_s=elapsed,
+                results_json={},
+                error=f"results.json not found at {results_path}",
+            )
 
         results = json.loads(results_path.read_text())
         return RunResult(spec=spec, success=True, elapsed_s=elapsed, results_json=results)
 
     except subprocess.TimeoutExpired:
-        return RunResult(spec=spec, success=False, elapsed_s=spec.timeout_s,
-                         results_json={}, error=f"timed out after {spec.timeout_s}s")
+        return RunResult(
+            spec=spec,
+            success=False,
+            elapsed_s=spec.timeout_s,
+            results_json={},
+            error=f"timed out after {spec.timeout_s}s",
+        )
     except Exception as e:
-        return RunResult(spec=spec, success=False, elapsed_s=time.perf_counter() - t0,
-                         results_json={}, error=str(e))
+        return RunResult(spec=spec, success=False, elapsed_s=time.perf_counter() - t0, results_json={}, error=str(e))
 
 
 # ---------------------------------------------------------------------------
 # Report generation
 # ---------------------------------------------------------------------------
+
 
 def _build_markdown_report(run_results: list[RunResult], ran_at: str, total_elapsed: float) -> str:
     lines: list[str] = []
@@ -206,12 +229,12 @@ def _build_markdown_report(run_results: list[RunResult], ran_at: str, total_elap
         lines.append("")
         lines.append("| Metric | Value |")
         lines.append("|---|---|")
-        for dotpath, label in zip(r.spec.headline_keys, r.spec.headline_labels):
+        for dotpath, label in zip(r.spec.headline_keys, r.spec.headline_labels, strict=True):
             value = _get_nested(r.results_json, dotpath)
             lines.append(f"| {label} | `{value}` |")
         ran_real = r.results_json.get("ran_with_real_ml_stack") or r.results_json.get("ran_with_real_export_stack")
         if ran_real is False:
-            lines.append(f"| Mode | ⚠️ CPU smoke-test (install `ml`/`onnx` extras + GPU for real numbers) |")
+            lines.append("| Mode | ⚠️ CPU smoke-test (install `ml`/`onnx` extras + GPU for real numbers) |")
         lines.append("")
 
     # Robustness sweep table (P1-02 specific, rendered inline)
@@ -225,9 +248,7 @@ def _build_markdown_report(run_results: list[RunResult], ran_at: str, total_elap
             lines.append("Values in [0,1] represent fraction of charts where the tallest bar was correctly identified.")
             lines.append("")
 
-            all_severities = sorted({
-                float(s) for kind_data in pert.values() for s in kind_data.keys()
-            })
+            all_severities = sorted({float(s) for kind_data in pert.values() for s in kind_data.keys()})
             header = "| Perturbation | " + " | ".join(f"sev={s:.2f}" for s in all_severities) + " |"
             sep = "|---|" + "---|" * len(all_severities)
             lines.append(header)
@@ -241,16 +262,20 @@ def _build_markdown_report(run_results: list[RunResult], ran_at: str, total_elap
                     row += f"{val} | "
                 lines.append(row)
             lines.append("")
-            lines.append("> Brightness and contrast are fully robust (adaptive background detection). "
-                         "Gaussian noise and occlusion degrade gracefully. "
-                         "Blur and rotation destroy the pixel signal at high severity — "
-                         "the honest result for these genuinely destructive perturbations.")
+            lines.append(
+                "> Brightness and contrast are fully robust (adaptive background detection). "
+                "Gaussian noise and occlusion degrade gracefully. "
+                "Blur and rotation destroy the pixel signal at high severity — "
+                "the honest result for these genuinely destructive perturbations."
+            )
             lines.append("")
 
     lines.append("---")
-    lines.append("*Generated by `benchmarks/run_all.py`. "
-                 "Numbers marked ⚠️ are CPU smoke-test values; "
-                 "see individual example READMEs for GPU reproduction instructions.*")
+    lines.append(
+        "*Generated by `benchmarks/run_all.py`. "
+        "Numbers marked ⚠️ are CPU smoke-test values; "
+        "see individual example READMEs for GPU reproduction instructions.*"
+    )
     return "\n".join(lines)
 
 
@@ -266,8 +291,10 @@ def _build_json_report(run_results: list[RunResult], ran_at: str, total_elapsed:
                 "error": r.error if not r.success else None,
                 "headline_metrics": {
                     label: _get_nested(r.results_json, key)
-                    for key, label in zip(r.spec.headline_keys, r.spec.headline_labels)
-                } if r.success else {},
+                    for key, label in zip(r.spec.headline_keys, r.spec.headline_labels, strict=True)
+                }
+                if r.success
+                else {},
                 "full_results": r.results_json,
             }
             for r in run_results
@@ -279,21 +306,27 @@ def _build_json_report(run_results: list[RunResult], ran_at: str, total_elapsed:
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="benchmarks/run_all.py",
         description="Run all examples and generate a unified benchmark report.",
     )
     parser.add_argument(
-        "--output-dir", default="benchmarks/reports",
+        "--output-dir",
+        default="benchmarks/reports",
         help="Directory for report files (default: benchmarks/reports)",
     )
     parser.add_argument(
-        "--skip", nargs="*", default=[],
+        "--skip",
+        nargs="*",
+        default=[],
         help="Example names to skip, e.g. --skip vlm_chart_finetune",
     )
     parser.add_argument(
-        "--only", nargs="*", default=[],
+        "--only",
+        nargs="*",
+        default=[],
         help="Run only these example names",
     )
     args = parser.parse_args(argv)
@@ -301,11 +334,7 @@ def main(argv: list[str] | None = None) -> int:
     output_dir = REPO_ROOT / args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    to_run = [
-        spec for spec in EXAMPLES
-        if spec.name not in args.skip
-        and (not args.only or spec.name in args.only)
-    ]
+    to_run = [spec for spec in EXAMPLES if spec.name not in args.skip and (not args.only or spec.name in args.only)]
 
     console.rule("[bold cyan]Production VLM Engineering — Unified Benchmark[/bold cyan]")
     console.print(f"Running {len(to_run)}/{len(EXAMPLES)} examples → {output_dir}")
@@ -318,8 +347,10 @@ def main(argv: list[str] | None = None) -> int:
         result = run_example(spec, output_dir)
         run_results.append(result)
         status = "[green]✓[/green]" if result.success else "[red]✗[/red]"
-        console.print(f"  {status} {spec.name} ({result.elapsed_s:.1f}s)" +
-                      (f" — {result.error[:80]}" if not result.success else ""))
+        console.print(
+            f"  {status} {spec.name} ({result.elapsed_s:.1f}s)"
+            + (f" — {result.error[:80]}" if not result.success else "")
+        )
 
     total_elapsed = time.perf_counter() - t_total_start
     ran_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

@@ -17,13 +17,12 @@ from production_vlm.robustness import (
 from production_vlm.robustness.chart_reader import read_tallest_bar
 from production_vlm.utils.synthetic_charts import generate_synthetic_chart
 
-
 # ---------------------------------------------------------------------------
 # Perturbation tests
 # ---------------------------------------------------------------------------
 
-class TestNaturalPerturbations:
 
+class TestNaturalPerturbations:
     @pytest.fixture
     def sample_image(self):
         chart = generate_synthetic_chart(seed=1, chart_type="bar", render_image=True)
@@ -31,8 +30,12 @@ class TestNaturalPerturbations:
 
     def test_all_kinds_registered(self):
         assert set(NaturalPerturbation.ALL.keys()) == {
-            "brightness", "contrast", "gaussian_noise",
-            "gaussian_blur", "rotation", "occlusion",
+            "brightness",
+            "contrast",
+            "gaussian_noise",
+            "gaussian_blur",
+            "rotation",
+            "occlusion",
         }
 
     def test_severity_zero_minimal_change(self, sample_image):
@@ -80,12 +83,13 @@ class TestNaturalPerturbations:
 # OOD detection tests
 # ---------------------------------------------------------------------------
 
-class TestKNNOODDetector:
 
+class TestKNNOODDetector:
     @pytest.fixture
     def reference_embeddings(self):
         from production_vlm.utils.synthetic_charts import generate_synthetic_chart
         from production_vlm.utils.vision_encoder import SyntheticEmbeddingProxy
+
         encoder = SyntheticEmbeddingProxy(embedding_dim=64, seed=0, shift_magnitude=12.0)
         charts = [generate_synthetic_chart(seed=i, render_image=False) for i in range(150)]
         return encoder.encode_charts(charts, style_shift_flags=[False] * 150)
@@ -101,6 +105,7 @@ class TestKNNOODDetector:
     def test_low_fp_on_in_distribution(self, reference_embeddings):
         from production_vlm.utils.synthetic_charts import generate_synthetic_chart
         from production_vlm.utils.vision_encoder import SyntheticEmbeddingProxy
+
         encoder = SyntheticEmbeddingProxy(embedding_dim=64, seed=0, shift_magnitude=12.0)
         detector = KNNOODDetector(reference_embeddings, k=5, percentile=15.0)
         holdout = [generate_synthetic_chart(seed=2000 + i, render_image=False) for i in range(40)]
@@ -111,6 +116,7 @@ class TestKNNOODDetector:
     def test_high_tp_on_shifted(self, reference_embeddings):
         from production_vlm.utils.synthetic_charts import generate_synthetic_chart
         from production_vlm.utils.vision_encoder import SyntheticEmbeddingProxy
+
         encoder = SyntheticEmbeddingProxy(embedding_dim=64, seed=0, shift_magnitude=12.0)
         detector = KNNOODDetector(reference_embeddings, k=5, percentile=15.0)
         shifted = [generate_synthetic_chart(seed=3000 + i, style_shift=True, render_image=False) for i in range(40)]
@@ -121,6 +127,7 @@ class TestKNNOODDetector:
     def test_score_returns_ood_result_fields(self, reference_embeddings):
         from production_vlm.utils.synthetic_charts import generate_synthetic_chart
         from production_vlm.utils.vision_encoder import SyntheticEmbeddingProxy
+
         encoder = SyntheticEmbeddingProxy(embedding_dim=64, seed=0, shift_magnitude=12.0)
         detector = KNNOODDetector(reference_embeddings)
         chart = generate_synthetic_chart(seed=99, render_image=False)
@@ -135,8 +142,8 @@ class TestKNNOODDetector:
 # Hallucination guard tests
 # ---------------------------------------------------------------------------
 
-class TestHallucinationGuard:
 
+class TestHallucinationGuard:
     def test_correct_answer_passes(self):
         guard = HallucinationGuard()
         result = guard.check(
@@ -187,15 +194,17 @@ class TestHallucinationGuard:
 # Chart reader tests
 # ---------------------------------------------------------------------------
 
-class TestChartReader:
 
+class TestChartReader:
     def test_100_pct_baseline_on_clean_bar_charts(self):
         correct = 0
         n = 20
         for i in range(n):
             chart = generate_synthetic_chart(seed=i, chart_type="bar", render_image=True)
             result = read_tallest_bar(
-                chart.image, len(chart.categories), int(np.argmax(chart.values)),
+                chart.image,
+                len(chart.categories),
+                int(np.argmax(chart.values)),
                 plot_bbox=chart.plot_bbox,
             )
             correct += result.correct
@@ -227,7 +236,9 @@ class TestChartReader:
             chart = generate_synthetic_chart(seed=i, chart_type="bar", render_image=True)
             pert = apply_perturbation(chart.image, "brightness", severity=0.8, seed=i)
             result = read_tallest_bar(
-                pert.perturbed_image, len(chart.categories), int(np.argmax(chart.values)),
+                pert.perturbed_image,
+                len(chart.categories),
+                int(np.argmax(chart.values)),
                 plot_bbox=chart.plot_bbox,
             )
             correct += result.correct
@@ -236,7 +247,9 @@ class TestChartReader:
     def test_result_contains_heights_for_each_bar(self):
         chart = generate_synthetic_chart(seed=5, chart_type="bar", render_image=True)
         result = read_tallest_bar(
-            chart.image, len(chart.categories), int(np.argmax(chart.values)),
+            chart.image,
+            len(chart.categories),
+            int(np.argmax(chart.values)),
             plot_bbox=chart.plot_bbox,
         )
         assert len(result.bar_heights_px) == len(chart.categories)
