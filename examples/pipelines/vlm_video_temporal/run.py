@@ -43,7 +43,6 @@ from __future__ import annotations
 
 import json
 import sys
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -65,10 +64,11 @@ console = Console()
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class VideoFrame:
     frame_idx: int
-    image: object          # PIL.Image.Image | None
+    image: object  # PIL.Image.Image | None
     chart_metadata: object  # SyntheticChart (proxy for real frame content)
     timestamp_s: float = 0.0
 
@@ -76,6 +76,7 @@ class VideoFrame:
 @dataclass
 class TemporalSample:
     """A multi-frame clip with a temporal question and per-frame evidence."""
+
     frames: list[VideoFrame]
     question: str
     answer: str
@@ -130,8 +131,16 @@ def _synthetic_frame_sequence(seed: int, n_frames: int = 5, add_scene_change: bo
                 **{
                     k: getattr(chart, k)
                     for k in [
-                        "chart_type", "title", "categories", "values", "units",
-                        "question", "answer", "evidence_text", "style_seed", "plot_bbox",
+                        "chart_type",
+                        "title",
+                        "categories",
+                        "values",
+                        "units",
+                        "question",
+                        "answer",
+                        "evidence_text",
+                        "style_seed",
+                        "plot_bbox",
                     ]
                 },
             )
@@ -143,8 +152,7 @@ def _build_temporal_sample(frames: list[VideoFrame]) -> TemporalSample:
     """Build a temporal QA sample: question spans the whole clip, evidence is per-frame."""
     first_chart = frames[0].chart_metadata
     question = (
-        f"Across the video clip, which frame shows the highest '{first_chart.categories[0]}' "
-        f"value and what is it?"
+        f"Across the video clip, which frame shows the highest '{first_chart.categories[0]}' value and what is it?"
     )
     max_val_frame = max(frames, key=lambda f: f.chart_metadata.values[0] if f.chart_metadata.values else 0)
     answer = (
@@ -169,6 +177,7 @@ def _build_temporal_sample(frames: list[VideoFrame]) -> TemporalSample:
 # ---------------------------------------------------------------------------
 # Frame sampling strategies
 # ---------------------------------------------------------------------------
+
 
 def sample_uniform(frames: list[VideoFrame], n: int) -> list[VideoFrame]:
     """Select n evenly-spaced frames."""
@@ -217,6 +226,7 @@ def sample_adaptive(frames: list[VideoFrame], n_budget: int) -> list[VideoFrame]
 # Temporal evaluation metric
 # ---------------------------------------------------------------------------
 
+
 def temporal_grounding_score(prediction: str, per_frame_evidence: list[str]) -> TemporalEvalResult:
     """Multi-frame faithfulness: score against each frame's evidence, take the max.
 
@@ -228,13 +238,9 @@ def temporal_grounding_score(prediction: str, per_frame_evidence: list[str]) -> 
     if not per_frame_evidence:
         return TemporalEvalResult(0.0, False, 0, False)
 
-    # Score against the concatenated evidence (conservative) and each frame
-    combined_evidence = " | ".join(per_frame_evidence)
-    combined_result = faithfulness_score(prediction, prediction, combined_evidence)
-    per_frame_scores = [
-        faithfulness_score(prediction, prediction, ev).score
-        for ev in per_frame_evidence
-    ]
+    # Score each frame's evidence separately; the answer only needs to
+    # ground in the single most relevant frame, not the concatenation of all of them.
+    per_frame_scores = [faithfulness_score(prediction, prediction, ev).score for ev in per_frame_evidence]
     max_frame_score = max(per_frame_scores)
     grounded = max_frame_score > 0.3
 
@@ -242,6 +248,7 @@ def temporal_grounding_score(prediction: str, per_frame_evidence: list[str]) -> 
     structured_valid = False
     try:
         import json as _json
+
         start = prediction.find("{")
         end = prediction.rfind("}") + 1
         if start >= 0 and end > start:
@@ -261,6 +268,7 @@ def temporal_grounding_score(prediction: str, per_frame_evidence: list[str]) -> 
 # ---------------------------------------------------------------------------
 # Mock VLM (CPU fallback) + format helpers
 # ---------------------------------------------------------------------------
+
 
 def _mock_vlm_temporal(sample: TemporalSample, sampled_frames: list[VideoFrame]) -> str:
     """CPU fallback: generates a structured JSON answer using ground-truth metadata.
@@ -291,6 +299,7 @@ def _format_temporal_prompt(sample: TemporalSample, sampled_frames: list[VideoFr
 # ---------------------------------------------------------------------------
 # Drift detection over frame embeddings (P0-04 integration)
 # ---------------------------------------------------------------------------
+
 
 def detect_scene_changes_via_embedding(frames: list[VideoFrame], encoder: SyntheticEmbeddingProxy) -> list[int]:
     """Use embedding-space cosine distance to detect scene changes in the frame sequence.
@@ -325,10 +334,12 @@ def detect_scene_changes_via_embedding(frames: list[VideoFrame], encoder: Synthe
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main(config_path: str | None = None) -> dict:
     default_cfg_path = Path(__file__).resolve().parents[3] / "configs" / "vlm_video_temporal.yaml"
     cfg_path = Path(config_path) if config_path else default_cfg_path
     import yaml
+
     cfg = yaml.safe_load(cfg_path.read_text())
 
     set_seed(cfg["video"]["seed"])

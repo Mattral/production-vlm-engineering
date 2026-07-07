@@ -111,10 +111,9 @@ def _has_real_export_stack() -> bool:
 def export_real_model_to_onnx(cfg: dict) -> Path:
     """Export `cfg['model']['checkpoint']` to ONNX via `optimum`/`torch.onnx`."""
     import torch
-    from transformers import AutoModel, AutoProcessor
+    from transformers import AutoModel
 
     checkpoint = cfg["model"]["checkpoint"]
-    processor = AutoProcessor.from_pretrained(checkpoint)
     model = AutoModel.from_pretrained(checkpoint)
     model.eval()
 
@@ -288,8 +287,7 @@ def main(config_path: str | None = None) -> dict:
 
     if real_stack:
         console.print(
-            "[green]onnx/onnxruntime/torch/transformers detected -- "
-            "running real export + quantization path.[/green]"
+            "[green]onnx/onnxruntime/torch/transformers detected -- running real export + quantization path.[/green]"
         )
         with timer("export to ONNX"):
             fp32_path = export_real_model_to_onnx(cfg)
@@ -300,7 +298,7 @@ def main(config_path: str | None = None) -> dict:
         console.print(
             "[yellow]No onnx/onnxruntime/torch/transformers + network stack detected -- running the "
             "benchmark harness against a synthetic compute-equivalent backbone. Install "
-            "`pip install -e \".[ml,onnx]\"` with network access "
+            '`pip install -e ".[ml,onnx]"` with network access '
             "and re-run for real ONNX/quantization numbers.[/yellow]"
         )
         model_paths = {"fp32": None, "dynamic_int8": None}
@@ -332,8 +330,13 @@ def main(config_path: str | None = None) -> dict:
     console.table(
         title="Before/After: fp32 vs dynamic INT8" + ("" if real_stack else " (synthetic-graph benchmark)"),
         columns=[
-            "Variant", "Image Size", "Batch", "Latency (ms)",
-            "Throughput (img/s)", "Peak Mem (MB)", "Accuracy Retained",
+            "Variant",
+            "Image Size",
+            "Batch",
+            "Latency (ms)",
+            "Throughput (img/s)",
+            "Peak Mem (MB)",
+            "Accuracy Retained",
         ],
         rows=rows,
     )
@@ -341,7 +344,7 @@ def main(config_path: str | None = None) -> dict:
     fp32_rows = [r for r in results_detail if r["variant"] == "fp32"]
     int8_rows = [r for r in results_detail if r["variant"] == "dynamic_int8"]
     mean_speedup = np.mean(
-        [f["mean_latency_ms"] / i["mean_latency_ms"] for f, i in zip(fp32_rows, int8_rows)]
+        [f["mean_latency_ms"] / i["mean_latency_ms"] for f, i in zip(fp32_rows, int8_rows, strict=True)]
     )
     console.print("")
     console.print(
@@ -364,6 +367,7 @@ def main(config_path: str | None = None) -> dict:
 
     try:
         from production_vlm.utils.visualization import plot_benchmark_speedup  # noqa: PLC0415
+
         plot_path = plot_benchmark_speedup(
             details=results_detail,
             output_path=output_dir / "benchmark_speedup.png",

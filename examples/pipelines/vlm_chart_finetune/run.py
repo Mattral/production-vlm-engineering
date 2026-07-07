@@ -75,9 +75,9 @@ def _has_real_ml_stack() -> bool:
     availability.
     """
     try:
+        import peft  # noqa: F401
         import torch  # noqa: F401
         import transformers  # noqa: F401
-        import peft  # noqa: F401
     except ImportError:
         return False
     try:
@@ -176,7 +176,7 @@ def _extract_structured_json(chart) -> dict:
         "title": chart.title,
         "series": [
             {"category": cat, "value": round(val, 2), "unit": chart.units}
-            for cat, val in zip(chart.categories, chart.values)
+            for cat, val in zip(chart.categories, chart.values, strict=True)
         ],
     }
 
@@ -196,7 +196,6 @@ def _structured_extraction_accuracy(eval_set, noise_zero_shot: bool = False) -> 
     ``noise_zero_shot=True`` simulates a zero-shot model that often
     produces malformed JSON or wrong values, giving a realistic baseline.
     """
-    import json as _json
 
     schema_valid, mape_vals, coverage_vals = [], [], []
 
@@ -215,6 +214,7 @@ def _structured_extraction_accuracy(eval_set, noise_zero_shot: bool = False) -> 
             # that happen to collide. style_seed is unique per chart by
             # construction, giving genuinely independent, reproducible draws.
             import random
+
             rng = random.Random(chart.style_seed)
             if rng.random() < 0.4:
                 pred = {"chart_type": chart.chart_type, "title": chart.title}  # missing 'series'
@@ -364,8 +364,7 @@ def main(config_path: str | None = None) -> dict:
             "simulated model outputs standing in for actual generations.[/yellow]"
         )
         console.print(
-            "[yellow]Install `pip install -e \".[ml]\"` and run on a CUDA host "
-            "for genuine fine-tuning numbers.[/yellow]"
+            '[yellow]Install `pip install -e ".[ml]"` and run on a CUDA host for genuine fine-tuning numbers.[/yellow]'
         )
         with timer("evaluation"):
             zero_shot = _zero_shot_baseline(eval_set, cfg)
@@ -446,17 +445,19 @@ def main(config_path: str | None = None) -> dict:
     for i, chart in enumerate(eval_set[:3]):
         zero_pred = f"Based on the chart titled '{chart.title}', the value appears moderate."
         fine_pred = chart.answer.replace("has", "shows").replace("which is", "making it")
-        console.print(f"[bold]Q{i+1}:[/bold] {chart.question}")
+        console.print(f"[bold]Q{i + 1}:[/bold] {chart.question}")
         console.print(f"  [red]Zero-shot:[/red] {zero_pred}")
         console.print(f"  [green]Fine-tuned:[/green] {fine_pred}")
         console.print(f"  [dim]Ground truth:[/dim] {chart.answer}")
         console.print("")
-        results.setdefault("qualitative_examples", []).append({
-            "question": chart.question,
-            "zero_shot": zero_pred,
-            "finetuned": fine_pred,
-            "ground_truth": chart.answer,
-        })
+        results.setdefault("qualitative_examples", []).append(
+            {
+                "question": chart.question,
+                "zero_shot": zero_pred,
+                "finetuned": fine_pred,
+                "ground_truth": chart.answer,
+            }
+        )
 
     # Generate visualization artifact
     try:

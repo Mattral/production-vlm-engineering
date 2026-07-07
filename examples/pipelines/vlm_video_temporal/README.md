@@ -20,7 +20,7 @@ This is an explicit minimal template, not a full training pipeline. The roadmap 
 ## Run it
 
 ```bash
-cv-playbook run-example vlm_video_temporal
+production-vlm run-example vlm_video_temporal
 ```
 
 Runs in ~3s on CPU. No GPU, no video file needed — uses synthetic chart sequences as proxy frames.

@@ -60,9 +60,9 @@ from production_vlm.utils import set_seed, timer  # noqa: E402
 from production_vlm.utils.console import Console  # noqa: E402
 from production_vlm.utils.observability import ObservabilityLogger, PrometheusMetricsServer  # noqa: E402
 from production_vlm.utils.retraining import QueuedSample, RetrainingTrigger  # noqa: E402
-from production_vlm.utils.visualization import plot_drift_timeline  # noqa: E402
 from production_vlm.utils.synthetic_charts import generate_synthetic_chart  # noqa: E402
 from production_vlm.utils.vision_encoder import SyntheticEmbeddingProxy  # noqa: E402
+from production_vlm.utils.visualization import plot_drift_timeline  # noqa: E402
 
 console = Console()
 
@@ -246,8 +246,7 @@ def main(config_path: str | None = None) -> dict:
         console.print("[red]Drift was injected but never flagged -- check detector thresholds.[/red]")
 
     console.print(
-        f"Active learning queue accumulated {al_queue_total} samples "
-        f"flagged for human labeling / retraining."
+        f"Active learning queue accumulated {al_queue_total} samples flagged for human labeling / retraining."
     )
 
     obs_summary = obs_logger.summary()
@@ -296,8 +295,7 @@ def main(config_path: str | None = None) -> dict:
 
     console.print(f"[bold green]Results → {out_path}[/bold green]")
     console.print(
-        f"[bold green]Observability events: {obs_logger.log_path} "
-        f"({obs_summary['total_events']} events)[/bold green]"
+        f"[bold green]Observability events: {obs_logger.log_path} ({obs_summary['total_events']} events)[/bold green]"
     )
     return results
 

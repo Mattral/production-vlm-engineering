@@ -44,7 +44,6 @@ from production_vlm.robustness import (  # noqa: E402
     GuardDecision,
     HallucinationGuard,
     KNNOODDetector,
-    NaturalPerturbation,
     apply_perturbation,
 )
 from production_vlm.robustness.chart_reader import read_tallest_bar  # noqa: E402
@@ -65,6 +64,7 @@ def _load_cfg(config_path: str | None) -> dict:
 # ---------------------------------------------------------------------------
 # Component 0: Adversarial robustness (PGD-style) — P1-02 roadmap requirement
 # ---------------------------------------------------------------------------
+
 
 def _l2_normalize(x: np.ndarray) -> np.ndarray:
     norms = np.linalg.norm(x, axis=-1, keepdims=True)
@@ -143,6 +143,7 @@ def run_adversarial_robustness(cfg: dict) -> dict:
         adv_arr = np.clip(img_arr + epsilon * noise_dir, 0.0, 1.0)
 
         from PIL import Image as PILImage  # noqa: PLC0415
+
         adv_img = PILImage.fromarray((adv_arr * 255).astype(np.uint8))
 
         # Encode the adversarial image
@@ -151,9 +152,7 @@ def run_adversarial_robustness(cfg: dict) -> dict:
         cos_after = float(adv_emb @ ref_centroid)
         centroid_cosine_after.append(cos_after)
 
-        shift = float(np.linalg.norm(
-            _l2_normalize(clean_embs[i : i + 1])[0] - adv_emb
-        ))
+        shift = float(np.linalg.norm(_l2_normalize(clean_embs[i : i + 1])[0] - adv_emb))
         embedding_shifts.append(shift)
 
     mean_shift = float(np.mean(embedding_shifts))
@@ -194,6 +193,7 @@ def run_adversarial_robustness(cfg: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Component 1: Perturbation robustness sweep
 # ---------------------------------------------------------------------------
+
 
 def _is_near_tie(values: list[float], min_margin_pct: float = 0.01) -> bool:
     """Return True if the top two values are within min_margin_pct of the maximum.
@@ -263,6 +263,7 @@ def run_perturbation_sweep(cfg: dict) -> dict:
 # Component 2: OOD detection benchmark
 # ---------------------------------------------------------------------------
 
+
 def run_ood_benchmark(cfg: dict) -> dict:
     ocfg = cfg["ood"]
     encoder = SyntheticEmbeddingProxy(
@@ -284,8 +285,7 @@ def run_ood_benchmark(cfg: dict) -> dict:
     fp_rate = sum(r.is_ood for r in detector.score_batch(holdout_emb)) / ocfg["n_holdout"]
 
     shifted = [
-        generate_synthetic_chart(seed=3000 + i, style_shift=True, render_image=False)
-        for i in range(ocfg["n_shifted"])
+        generate_synthetic_chart(seed=3000 + i, style_shift=True, render_image=False) for i in range(ocfg["n_shifted"])
     ]
     shifted_emb = encoder.encode_charts(shifted, style_shift_flags=[True] * ocfg["n_shifted"])
     tp_rate = sum(r.is_ood for r in detector.score_batch(shifted_emb)) / ocfg["n_shifted"]
@@ -305,14 +305,17 @@ def run_ood_benchmark(cfg: dict) -> dict:
 # Component 3: Hallucination guard evaluation
 # ---------------------------------------------------------------------------
 
+
 def run_guard_evaluation(cfg: dict) -> dict:
     gcfg = cfg["guard"]
     n = gcfg["n_eval_samples"]
     inject_rate = gcfg["hallucination_injection_rate"]
-    guard = HallucinationGuard(GuardConfig(
-        pass_threshold=gcfg["pass_threshold"],
-        flag_threshold=gcfg["flag_threshold"],
-    ))
+    guard = HallucinationGuard(
+        GuardConfig(
+            pass_threshold=gcfg["pass_threshold"],
+            flag_threshold=gcfg["flag_threshold"],
+        )
+    )
 
     charts = [generate_synthetic_chart(seed=500 + i, render_image=False) for i in range(n)]
     n_hallucinated = int(n * inject_rate)
@@ -347,16 +350,17 @@ def run_guard_evaluation(cfg: dict) -> dict:
     # REJECT withholds the answer entirely, FLAG returns it with a warning.
     # Either is better than silently PASSing a hallucination to the user.
     true_positives = sum(
-        1 for d, l in zip(decisions, true_labels)
-        if l == "hallucinated" and d in (GuardDecision.REJECT.value, GuardDecision.FLAG.value)
+        1
+        for d, label in zip(decisions, true_labels, strict=True)
+        if label == "hallucinated" and d in (GuardDecision.REJECT.value, GuardDecision.FLAG.value)
     )
     false_positives = sum(
-        1 for d, l in zip(decisions, true_labels)
-        if l == "clean" and d == GuardDecision.REJECT.value  # only hard rejects on clean = FP
+        1
+        for d, label in zip(decisions, true_labels, strict=True)
+        if label == "clean" and d == GuardDecision.REJECT.value  # only hard rejects on clean = FP
     )
     true_negatives = sum(
-        1 for d, l in zip(decisions, true_labels)
-        if l == "clean" and d == GuardDecision.PASS.value
+        1 for d, label in zip(decisions, true_labels, strict=True) if label == "clean" and d == GuardDecision.PASS.value
     )
 
     precision = true_positives / max(1, true_positives + false_positives)
@@ -389,14 +393,14 @@ def run_guard_evaluation(cfg: dict) -> dict:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main(config_path: str | None = None) -> dict:
     cfg = _load_cfg(config_path)
     set_seed(cfg["reference"]["seed"])
 
     console.rule("[bold cyan]VLM Robustness & Safety Guard: P1-02[/bold cyan]")
     console.print(
-        "Four components: natural perturbation sweep, adversarial robustness (PGD), "
-        "OOD detection, hallucination guard."
+        "Four components: natural perturbation sweep, adversarial robustness (PGD), OOD detection, hallucination guard."
     )
     console.print("")
 
@@ -448,9 +452,10 @@ def main(config_path: str | None = None) -> dict:
 
     try:
         from production_vlm.utils.visualization import (  # noqa: PLC0415
-            plot_perturbation_sweep,
             plot_adversarial_embedding_shift,
+            plot_perturbation_sweep,
         )
+
         p1 = plot_perturbation_sweep(
             perturbation_results=perturbation_results,
             output_path=output_dir / "perturbation_sweep.png",
