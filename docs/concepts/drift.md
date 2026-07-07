@@ -42,6 +42,6 @@ Freezing $\sigma_{\text{baseline}}$ from the pre-shift calibration period sidest
 
 `detection_delay_batches = drift_detected_at_batch - drift_injected_at_batch`
 
-In the default config, both detectors achieve zero detection delay — they flag drift at the exact first batch where it's injected. The benchmark sweep (`cv-playbook benchmark embedding_drift_active_learning`) characterizes how this delay grows as the shift magnitude decreases toward the detection boundary.
+In the default config, both detectors achieve zero detection delay — they flag drift at the exact first batch where it's injected. The benchmark sweep (`production-vlm benchmark embedding_drift_active_learning`) characterizes how this delay grows as the shift magnitude decreases toward the detection boundary.
 
 [^1]: Montgomery, D.C. (2020). *Introduction to Statistical Quality Control*, 8th edition. Wiley.

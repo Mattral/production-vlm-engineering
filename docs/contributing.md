@@ -4,7 +4,7 @@ See [`CONTRIBUTING.md`](../CONTRIBUTING.md) in the repo root for setup instructi
 
 ## Key principles for contributors
 
-**Run the code.** Every real bug in this repo was found by running the code, not by reading it. Before opening a PR for a new example or a change to an existing pipeline, actually run it (`cv-playbook run-example <name>`) and check the output makes sense.
+**Run the code.** Every real bug in this repo was found by running the code, not by reading it. Before opening a PR for a new example or a change to an existing pipeline, actually run it (`production-vlm run-example <name>`) and check the output makes sense.
 
 **Document bugs in-place.** When you find and fix a bug, leave a clear comment explaining the failure mode alongside the fix. The failure modes here are instructive (variance contamination in EWMA, absolute-threshold brittleness under contrast perturbation, matplotlib axes-vs-figure coordinate confusion) and worth preserving rather than quietly rewriting.
 
