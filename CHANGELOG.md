@@ -9,6 +9,35 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Added (roadmap gap-closure: memory-efficient decoding + distributed 2027 framing)
+
+- **`production_vlm.utils.kv_cache`** — closed-form KV-cache memory analysis across four
+  attention/cache strategies (MHA, GQA, MQA, sliding-window), addressing the "memory-efficient
+  decoding / attention optimizations" requirement of P0-03 that had been missed across several
+  prior sessions despite the rest of P0-03 (ONNX export, INT8 quantization, dynamic batching)
+  being complete. This is a genuinely separate bottleneck from the vision-encoder work already
+  in `vlm_edge_inference`: a VLM's language-model decoder generates tokens autoregressively
+  against a KV-cache dominated by hundreds to thousands of visual tokens, where memory (not
+  FLOPs) is usually the binding constraint. Wired into `vlm_edge_inference` as "Component 2"
+  with its own results section and a two-panel plot (absolute memory vs. sequence length, and
+  relative-to-MHA bar chart at the longest tested sequence). 13 new unit tests verify the core
+  invariants: MHA is the 1.0x baseline, GQA/MQA reduce memory by exactly the query-to-kv head
+  ratio, sliding-window memory is provably capped (identical absolute MB at the window size and
+  4x beyond it), and the strict MHA > GQA > MQA memory ordering holds at any fixed sequence
+  length. Cites Vaswani et al. (2017), Shazeer (2019, MQA), Ainslie et al. (2023, GQA), Beltagy
+  et al. (2020, sliding-window), and references FlashAttention-2 (Dao, 2023), PagedAttention
+  (Kwon et al., 2023), and speculative decoding (Leviathan et al., 2023) for the broader
+  efficient-decoding landscape this connects to.
+
+- **Distributed "Why this matters for 2027" sections** across all four `docs/concepts/` pages
+  (LoRA, drift detection, evaluation metrics, robustness), each grounded in that page's specific
+  technique rather than generic copy-pasted framing. The roadmap specified this framing "in each
+  major section," but it had only ever been added to the top-level README.
+
+- `production_vlm.utils.observability` and `production_vlm.utils.retraining` — present in the
+  codebase and covered by tests since an earlier session, but never added to `docs/api.md`;
+  fixed while updating the API reference for the new `kv_cache` module.
+
 ### Fixed (found by real `ruff check`/`ruff format`, installed and run directly)
 
 - **63 real ruff lint errors** across `src/`, `tests/`, `examples/`, `benchmarks/`, `scripts/`:

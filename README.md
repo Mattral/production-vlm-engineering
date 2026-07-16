@@ -39,6 +39,8 @@ proxies; GPU path notes are in the rightmost column.
 | `embedding_drift_active_learning` | Detection delay (batches) | **0** | ✅ Real KS-test, numpy/scipy |
 | `embedding_drift_active_learning` | Retraining runs triggered | **2** | ✅ Real threshold-based feedback loop |
 | `vlm_edge_inference` | INT8 speedup vs fp32 | **3.99×** | ⚠️ Synthetic backbone; real ONNX needs `[onnx]` extra |
+| `vlm_edge_inference` | GQA KV-cache memory vs MHA | **14.3%** (7× smaller) | ✅ Closed-form arithmetic, no model needed |
+| `vlm_edge_inference` | KV-cache memory (GQA vs MHA baseline) | **14.3%** | ✅ Closed-form arithmetic, no model needed |
 | `vlm_robustness_guard` | Hallucination guard precision / recall | **1.0 / 1.0** | ✅ Real faithfulness harness |
 | `vlm_robustness_guard` | OOD detection TP rate | **85–100%** | ✅ Real kNN calibration |
 | `vlm_video_temporal` | Frame sampling faithfulness | **0.70** | ✅ Real temporal grounding metric |
@@ -132,7 +134,9 @@ ONNX export → dynamic INT8 quantization → before/after benchmark table (late
 
 The FastAPI serving stub implements the **dynamic batching pattern** used by Triton Inference Server and TorchServe: requests queue and flush on `max_batch_size` or `max_batch_wait_ms`, whichever comes first. The batching queue (`production_vlm.utils.batching_queue.BatchingQueue`) is dependency-free and unit-tested independently — drop it into any asyncio serving layer.
 
-References: Jacob et al. (2018) integer-arithmetic-only inference
+A separate, second component (`production_vlm.utils.kv_cache`) addresses the *language-model decoder's* memory footprint — a different bottleneck than the vision encoder's throughput above. A modern VLM commonly encodes 500–1500+ visual tokens per image before generating a single word, so KV-cache size, not FLOPs, usually binds long-context decoding. Four attention/cache strategies (MHA, GQA, MQA, sliding-window) are compared via closed-form memory arithmetic — no model weights needed, runs identically on any machine. GQA gives ~7× memory reduction, MQA ~28×, and sliding-window shows its real value only once the true sequence exceeds the window (capped absolute memory vs. MHA's unbounded linear growth).
+
+References: Jacob et al. (2018) integer-arithmetic-only inference · Ainslie et al. (2023) GQA · Dao (2023) FlashAttention-2 · Kwon et al. (2023) PagedAttention
 
 ### 4 · Robustness & Safety Guard ([`vlm_robustness_guard`](examples/pipelines/vlm_robustness_guard/))
 

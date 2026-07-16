@@ -11,7 +11,7 @@ merely exists.
 |---|---|---|
 | P0-01: Repo structure & tooling | **Done** | `pyproject.toml`, `Makefile`, `src/production_vlm/`, `examples/pipelines/`, `configs/`, `tests/`, `docker/`, `.github/workflows/`. CPU-only core deps (numpy/scipy/pyyaml/matplotlib/pillow); `ml`/`cli`/`onnx`/`serving`/`demo` as optional extras. |
 | P0-02: VLM chart/document fine-tuning example | **Done** | LoRA on vision tower + LM, zero-download synthetic chart-QA data, three-metric eval harness (numeric/grounding/faithfulness), honest CPU-fallback labeling. Runs in ~5s on CPU. |
-| P0-03: Inference optimization & edge deployment example | **Done** | ONNX export + dynamic INT8 quantization path; honest synthetic-backbone fallback (with a documented numpy float16-is-slower gotcha avoided); FastAPI serving stub with a real, unit-tested dynamic batching queue. Runs in ~2s on CPU fallback. |
+| P0-03: Inference optimization & edge deployment example | **Done** | ONNX export + dynamic INT8 quantization path; honest synthetic-backbone fallback (with a documented numpy float16-is-slower gotcha avoided); FastAPI serving stub with a real, unit-tested dynamic batching queue; **KV-cache memory-efficient decoding analysis** (`production_vlm.utils.kv_cache`) comparing MHA/GQA/MQA/sliding-window attention strategies via closed-form memory arithmetic — addresses the roadmap's separate "memory-efficient decoding/attention optimizations" requirement, distinct from the vision-encoder ONNX work above. TensorRT/OpenVINO documented as extension paths with code stubs and Jetson-class FPS targets. Runs in ~2s on CPU fallback. |
 | P0-04: Embedding drift detection & active learning | **Done** | KS-test cosine drift detector + frozen-baseline EWMA detector (a real self-defeating-variance bug was found and fixed during development -- see `src/production_vlm/drift/__init__.py` docstrings), label-free active-learning triage, honest sensitivity-sweep benchmark. Runs in <1s on CPU. |
 
 ## P1 -- Utility library, differentiators, documentation
@@ -22,7 +22,7 @@ merely exists.
 | P1-02: Robustness & safety layer (adversarial/OOD/grounding guard) | **Done** | `production_vlm.robustness`: six ImageNet-C-style natural perturbations, calibrated kNN OOD detector (validated FP/TP tradeoff documented in class docstring), hallucination guard with three-tier pass/flag/reject decision. Fourth example pipeline `vlm_robustness_guard` ties all three together. Full test coverage in `tests/test_robustness.py` and `scripts/verify_no_pytest.py`. |
 | P1-03: Advanced evaluation & benchmarking harness | **Done** | `benchmarks/run_all.py` unified runner generates Markdown + JSON comparative report across all five examples. Synthetic perturbation generator exists (`production_vlm.robustness.NaturalPerturbation`: six ImageNet-C-style types, severity sweep, result table). Structured JSON chart extraction added to `vlm_chart_finetune` (P0-02 requirement). |
 | P1-04: Light video/3D extension | **Done (minimal template)** | `vlm_video_temporal` example: three frame-sampling strategies (uniform, keyframe L1-diff, adaptive), temporal grounding metric, structured JSON answer schema, scene-change detection via `CosineDriftDetector`. Explicit `next_steps` in results.json for swapping in real video loaders and VLMs. |
-| P1-05: Comprehensive documentation & citations | **Done** | Full MkDocs Material site: quickstart, architecture (Mermaid diagram), per-example deep-dives, concept pages (LoRA, drift, metrics, robustness), full API reference. Benchmark report embedded. 3 interactive Jupyter notebooks with pre-executed cells. All techniques cited inline at the point of implementation. |
+| P1-05: Comprehensive documentation & citations | **Done** | Full MkDocs Material site: quickstart, architecture (Mermaid diagram), per-example deep-dives, concept pages (LoRA, drift, metrics, robustness) each with a technique-specific "Why this matters for 2027" section, full API reference. Benchmark report embedded. 3 interactive Jupyter notebooks with pre-executed cells. All techniques cited inline at the point of implementation plus a consolidated `docs/citations.md`. |
 
 ## P2 -- Polish, releases, promotion
 
@@ -77,3 +77,20 @@ merely exists.
   fallback verifier that can't install pytest is still valuable, but running the *same* fixed-seed
   test exactly once per session is not the same guarantee as running it across many independent
   process invocations — non-determinism bugs specifically hide from single-invocation testing.
+
+- **A systematic, evidence-based re-audit against the roadmap's exact text (not memory of prior
+  audits) found two genuine remaining gaps** after several sessions of "everything is done"
+  claims: (1) P0-03's "memory-efficient decoding / attention optimizations" requirement was
+  never actually implemented — the existing `vlm_edge_inference` work covered ONNX/quantization
+  for the *vision encoder* only, a different bottleneck than the *language-model decoder's*
+  KV-cache memory during autoregressive generation, which the roadmap names as a separate
+  concern; (2) the roadmap's "'Why this matters for 2027' framing in each major section" was
+  present only in the top-level README, not distributed across the individual concept pages as
+  specified. Both are now fixed: `production_vlm.utils.kv_cache` implements real, tested,
+  closed-form MHA/GQA/MQA/sliding-window memory comparisons (13 new unit tests, wired into
+  `vlm_edge_inference` as Component 2 with its own plot and results section), and each of the
+  four concept pages (`lora.md`, `drift.md`, `metrics.md`, `robustness.md`) now has its own
+  technique-specific 2027 framing grounded in that page's actual content, not generic filler
+  copy-pasted across pages. The lesson: periodically re-deriving the gap list from the source
+  document's literal text, rather than trusting an accumulated mental model of "what's already
+  done," catches drift between claimed and actual completion.

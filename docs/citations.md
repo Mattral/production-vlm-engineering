@@ -37,6 +37,29 @@ Every technique implemented in this repo is cited inline, in the docstring of th
 - Jacob, B., Kligys, S., Chen, B., Zhu, M., Tang, M., Howard, A., Adam, H., & Kalenichenko, D. (2018). **Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference**. *CVPR 2018*. [arXiv:1712.05877](https://arxiv.org/abs/1712.05877)
   → Implemented in: `vlm_edge_inference/run.py` (`quantize_real_model`, ONNX Runtime dynamic INT8)
 
+## Memory-efficient decoding & attention
+
+- Vaswani, A., et al. (2017). **Attention Is All You Need**. *NeurIPS 2017*. [arXiv:1706.03762](https://arxiv.org/abs/1706.03762)
+  → Implemented in: `production_vlm/utils/kv_cache.py` (`AttentionStrategy.MHA`, the baseline)
+- Shazeer, N. (2019). **Fast Transformer Decoding: One Write-Head is All You Need**. [arXiv:1911.02150](https://arxiv.org/abs/1911.02150)
+  → Implemented in: `production_vlm/utils/kv_cache.py` (`AttentionStrategy.MQA`)
+- Ainslie, J., Lee-Thorp, J., de Jong, M., Zemlyanskiy, Y., Lebrón, F., & Sanghai, S. (2023).
+  **GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints**.
+  [arXiv:2305.13245](https://arxiv.org/abs/2305.13245)
+  → Implemented in: `production_vlm/utils/kv_cache.py` (`AttentionStrategy.GQA`)
+- Beltagy, I., Peters, M. E., & Cohan, A. (2020). **Longformer: The Long-Document Transformer**.
+  [arXiv:2004.05150](https://arxiv.org/abs/2004.05150)
+  → Implemented in: `production_vlm/utils/kv_cache.py` (`AttentionStrategy.SLIDING_WINDOW`)
+- Dao, T. (2023). **FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning**.
+  [arXiv:2307.08691](https://arxiv.org/abs/2307.08691)
+  → Referenced in: `kv_cache.py` module docstring (compute/memory-efficient exact attention, orthogonal to cache strategy)
+- Kwon, W., et al. (2023). **Efficient Memory Management for Large Language Model Serving with
+  PagedAttention**. *SOSP 2023* (the vLLM paper). [arXiv:2309.06180](https://arxiv.org/abs/2309.06180)
+  → Referenced in: `kv_cache.py` module docstring (memory *management* of whichever cache strategy is chosen)
+- Leviathan, Y., Kalman, M., & Matias, Y. (2023). **Fast Inference from Transformers via
+  Speculative Decoding**. *ICML 2023*. [arXiv:2211.17192](https://arxiv.org/abs/2211.17192)
+  → Referenced in: `kv_cache.py` module docstring (complementary axis to cache-size reduction — reducing forward passes per token)
+
 ## Dynamic batching & serving
 
 - NVIDIA Triton Inference Server documentation: **Dynamic Batching**. [docs.nvidia.com/deeplearning/triton-inference-server](https://docs.nvidia.com/deeplearning/triton-inference-server/)

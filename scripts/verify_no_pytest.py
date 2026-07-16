@@ -467,6 +467,43 @@ def test_structured_extraction() -> None:
     check("struct: zero-shot MAPE >0%", r_zero["numeric_extraction_mape"] > 0.0)
 
 
+def test_kv_cache() -> None:
+    print("test_kv_cache")
+    from production_vlm.utils.kv_cache import (
+        AttentionStrategy,
+        ModelDecoderConfig,
+        compare_strategies,
+        compute_kv_cache_memory,
+        visual_token_count,
+    )
+
+    check(
+        "kv_cache: 336px visual tokens = 576 (SigLIP/LLaVA convention)", visual_token_count(336, patch_size=14) == 576
+    )
+
+    cfg = ModelDecoderConfig(n_query_heads=28, n_kv_heads_gqa=4)
+    mha = compute_kv_cache_memory(cfg, AttentionStrategy.MHA, seq_len=1000)
+    gqa = compute_kv_cache_memory(cfg, AttentionStrategy.GQA, seq_len=1000)
+    mqa = compute_kv_cache_memory(cfg, AttentionStrategy.MQA, seq_len=1000)
+    check("kv_cache: MHA relative_to_mha == 1.0", abs(mha.relative_to_mha - 1.0) < 1e-6)
+    check("kv_cache: GQA reduces memory by head ratio", abs(gqa.relative_to_mha - 4 / 28) < 1e-6)
+    check("kv_cache: memory ordering MHA > GQA > MQA", mha.kv_cache_mb > gqa.kv_cache_mb > mqa.kv_cache_mb)
+
+    sw_cfg = ModelDecoderConfig(sliding_window_size=512)
+    at_window = compute_kv_cache_memory(sw_cfg, AttentionStrategy.SLIDING_WINDOW, seq_len=512)
+    beyond_window = compute_kv_cache_memory(sw_cfg, AttentionStrategy.SLIDING_WINDOW, seq_len=2000)
+    check(
+        "kv_cache: sliding window caps memory beyond window size",
+        abs(at_window.kv_cache_mb - beyond_window.kv_cache_mb) < 1e-6,
+    )
+
+    results = compare_strategies(cfg, seq_lens=[400, 800, 1200])
+    check(
+        "kv_cache: compare_strategies returns all 4 strategies",
+        set(results.keys()) == {"mha", "gqa", "mqa", "sliding_window"},
+    )
+
+
 def main() -> int:
     suites = [
         test_config,
@@ -478,6 +515,7 @@ def main() -> int:
         test_robustness,
         test_observability_retraining,
         test_structured_extraction,
+        test_kv_cache,
     ]
     for suite in suites:
         try:
