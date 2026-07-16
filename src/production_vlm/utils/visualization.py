@@ -320,3 +320,63 @@ def plot_adversarial_embedding_shift(
     fig.savefig(str(out), dpi=150, bbox_inches="tight")
     plt.close(fig)
     return out
+
+
+# ---------------------------------------------------------------------------
+# P0-03: KV-cache memory-efficient decoding comparison plot
+# ---------------------------------------------------------------------------
+
+
+def plot_kv_cache_comparison(comparison: dict, seq_lens: list, output_path: str | Path) -> Path:
+    """Line + bar plot: KV-cache memory (MB) vs sequence length, one line per attention strategy."""
+    _apply_style()
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.5))
+    fig.suptitle("KV-Cache Memory: Attention Strategy Comparison", fontweight="bold", fontsize=13)
+
+    strategy_labels = {
+        "mha": "MHA (baseline)",
+        "gqa": "GQA (4 kv-heads)",
+        "mqa": "MQA (1 kv-head)",
+        "sliding_window": "Sliding window (512 tok)",
+    }
+    for i, (strategy, results) in enumerate(comparison.items()):
+        mb_values = [r.kv_cache_mb for r in results]
+        ax1.plot(
+            seq_lens,
+            mb_values,
+            marker="o",
+            label=strategy_labels.get(strategy, strategy),
+            color=_PALETTE[i % len(_PALETTE)],
+            linewidth=2,
+        )
+
+    ax1.set_xlabel("Sequence length (tokens)")
+    ax1.set_ylabel("KV-cache memory (MB)")
+    ax1.set_title("Absolute memory vs sequence length")
+    ax1.legend(fontsize=8)
+
+    longest = seq_lens[-1]
+    rel_values = [comparison[s][-1].relative_to_mha for s in comparison]
+    labels_short = [strategy_labels.get(s, s) for s in comparison]
+    bars = ax2.bar(range(len(rel_values)), rel_values, color=_PALETTE[: len(rel_values)], zorder=3)
+    ax2.set_xticks(range(len(rel_values)))
+    ax2.set_xticklabels(labels_short, rotation=20, ha="right", fontsize=8)
+    ax2.set_ylabel("Fraction of MHA memory")
+    ax2.set_title(f"Relative memory at seq_len={longest}")
+    for bar, val in zip(bars, rel_values, strict=True):
+        ax2.text(
+            bar.get_x() + bar.get_width() / 2,
+            val + 0.02,
+            f"{val:.2f}×",
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+            fontsize=9,
+        )
+
+    fig.tight_layout()
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(str(out), dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return out

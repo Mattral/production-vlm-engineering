@@ -32,3 +32,14 @@ serving:
   max_batch_wait_ms: 50
 
 output_dir: "outputs/vlm_edge_inference"
+
+# Component 2: memory-efficient decoding (KV-cache) analysis.
+# Approximates a 7B-class VLM decoder (adjust to your checkpoint's config.json).
+kv_cache:
+  n_layers: 28
+  n_query_heads: 28
+  head_dim: 128
+  n_kv_heads_gqa: 4            # typical GQA group size for 7B-class models
+  sliding_window_size: 512     # tokens of local context retained
+  image_sizes_for_visual_tokens: [224, 336, 448]  # patch_size=14 convention
+  text_tokens_budget: 200      # approximate question + generated-answer token budget

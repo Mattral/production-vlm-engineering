@@ -81,6 +81,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
 from production_vlm.utils import set_seed, timer  # noqa: E402
 from production_vlm.utils.console import Console  # noqa: E402
+from production_vlm.utils.kv_cache import (  # noqa: E402
+    AttentionStrategy,
+    ModelDecoderConfig,
+    compare_strategies,
+    visual_token_count,
+)
 
 console = Console()
 
@@ -274,12 +280,89 @@ def _accuracy_retention_proxy(quantized: bool) -> float:
     return 1.0 if not quantized else 0.984
 
 
+# ---------------------------------------------------------------------------
+# Component 2: Memory-efficient decoding / attention optimization (P0-03)
+# ---------------------------------------------------------------------------
+
+
+def run_kv_cache_analysis(cfg: dict) -> dict:
+    """Compare KV-cache memory footprint across attention strategies for the LM decoder.
+
+    Distinct from (and complementary to) the ONNX/quantization benchmark
+    above: that benchmarks the *vision encoder's* forward-pass cost; this
+    addresses the *language-model decoder's* autoregressive generation
+    memory, where KV-cache size -- not FLOPs -- is usually the binding
+    constraint for long-context VLM inference. Pure closed-form memory
+    arithmetic (see `production_vlm.utils.kv_cache`), so it runs
+    identically and instantly on any machine, no model weights needed.
+    """
+    decoder_cfg = ModelDecoderConfig(
+        n_layers=cfg.get("kv_cache", {}).get("n_layers", 28),
+        n_query_heads=cfg.get("kv_cache", {}).get("n_query_heads", 28),
+        head_dim=cfg.get("kv_cache", {}).get("head_dim", 128),
+        n_kv_heads_gqa=cfg.get("kv_cache", {}).get("n_kv_heads_gqa", 4),
+        sliding_window_size=cfg.get("kv_cache", {}).get("sliding_window_size", 512),
+    )
+
+    image_sizes = cfg.get("kv_cache", {}).get("image_sizes_for_visual_tokens", [224, 336, 448])
+    visual_tokens = [visual_token_count(s) for s in image_sizes]
+    text_tokens_budget = cfg.get("kv_cache", {}).get("text_tokens_budget", 200)
+    seq_lens = sorted({vt + text_tokens_budget for vt in visual_tokens} | {2000})
+
+    comparison = compare_strategies(decoder_cfg, seq_lens, batch_size=1)
+
+    rows = []
+    for strategy in AttentionStrategy:
+        results = comparison[strategy.value]
+        row = [strategy.value]
+        for r in results:
+            row.append(f"{r.kv_cache_mb:.1f} MB ({r.relative_to_mha:.2f}×)")
+        rows.append(row)
+
+    console.table(
+        title="KV-Cache Memory by Attention Strategy (image_size -> visual_tokens+text -> seq_len)",
+        columns=["Strategy"] + [f"seq_len={s}" for s in seq_lens],
+        rows=rows,
+    )
+
+    longest_seq = seq_lens[-1]
+    savings = {s.value: comparison[s.value][-1].relative_to_mha for s in AttentionStrategy}
+
+    return {
+        "decoder_config": {
+            "n_layers": decoder_cfg.n_layers,
+            "n_query_heads": decoder_cfg.n_query_heads,
+            "head_dim": decoder_cfg.head_dim,
+            "n_kv_heads_gqa": decoder_cfg.n_kv_heads_gqa,
+            "sliding_window_size": decoder_cfg.sliding_window_size,
+        },
+        "image_sizes_tested": image_sizes,
+        "visual_tokens_per_image": dict(zip(image_sizes, visual_tokens, strict=True)),
+        "seq_lens_tested": seq_lens,
+        "longest_seq_len": longest_seq,
+        "relative_memory_at_longest_seq": savings,
+        "comparison_raw": {
+            strategy: [
+                {
+                    "seq_len": r.seq_len,
+                    "kv_cache_mb": round(r.kv_cache_mb, 2),
+                    "relative_to_mha": round(r.relative_to_mha, 4),
+                }
+                for r in results
+            ]
+            for strategy, results in comparison.items()
+        },
+    }
+
+
 def main(config_path: str | None = None) -> dict:
     cfg = _load_config(config_path)
     set_seed(42)
 
     console.rule(f"[bold cyan]VLM Edge Inference Benchmark: {cfg['name']}[/bold cyan]")
     console.print(f"Model: [bold]{cfg['model']['checkpoint']}[/bold] (pinned {cfg['model']['checkpoint_pinned_date']})")
+    console.print("")
+    console.rule("[bold cyan]Component 1: ONNX Export & INT8 Quantization[/bold cyan]")
 
     real_stack = _has_real_export_stack()
     rows = []
@@ -352,12 +435,24 @@ def main(config_path: str | None = None) -> dict:
         f"accuracy retention: {_accuracy_retention_proxy(quantized=True) * 100:.1f}%[/bold green]"
     )
 
+    console.print("")
+    console.rule("[bold cyan]Component 2: Memory-Efficient Decoding (KV-Cache Analysis)[/bold cyan]")
+    with timer("KV-cache memory analysis"):
+        kv_cache_results = run_kv_cache_analysis(cfg)
+    console.print(
+        f"[bold green]GQA: {kv_cache_results['relative_memory_at_longest_seq']['gqa']:.1%} of MHA memory, "
+        f"MQA: {kv_cache_results['relative_memory_at_longest_seq']['mqa']:.1%}, "
+        f"sliding-window: {kv_cache_results['relative_memory_at_longest_seq']['sliding_window']:.1%} "
+        f"(at seq_len={kv_cache_results['longest_seq_len']})[/bold green]"
+    )
+
     results = {
         "config_name": cfg["name"],
         "checkpoint": cfg["model"]["checkpoint"],
         "ran_with_real_export_stack": real_stack,
         "mean_speedup_dynamic_int8_vs_fp32": float(mean_speedup),
         "details": results_detail,
+        "kv_cache_memory_analysis": kv_cache_results,
     }
 
     output_dir = Path(cfg["output_dir"])
@@ -366,15 +461,24 @@ def main(config_path: str | None = None) -> dict:
     out_path.write_text(json.dumps(results, indent=2))
 
     try:
-        from production_vlm.utils.visualization import plot_benchmark_speedup  # noqa: PLC0415
+        from production_vlm.utils.visualization import plot_benchmark_speedup, plot_kv_cache_comparison  # noqa: PLC0415
 
         plot_path = plot_benchmark_speedup(
             details=results_detail,
             output_path=output_dir / "benchmark_speedup.png",
         )
-        results["plots"] = {"benchmark_speedup": str(plot_path)}
+        comparison_objs = compare_strategies(
+            ModelDecoderConfig(**{k: v for k, v in kv_cache_results["decoder_config"].items()}),
+            kv_cache_results["seq_lens_tested"],
+        )
+        kv_plot_path = plot_kv_cache_comparison(
+            comparison=comparison_objs,
+            seq_lens=kv_cache_results["seq_lens_tested"],
+            output_path=output_dir / "kv_cache_memory.png",
+        )
+        results["plots"] = {"benchmark_speedup": str(plot_path), "kv_cache_memory": str(kv_plot_path)}
         out_path.write_text(json.dumps(results, indent=2))
-        console.print(f"[bold green]Plot → {plot_path}[/bold green]")
+        console.print(f"[bold green]Plots → {plot_path.name}, {kv_plot_path.name}[/bold green]")
     except Exception as e:
         console.print(f"[yellow]Plot skipped: {e}[/yellow]")
 
