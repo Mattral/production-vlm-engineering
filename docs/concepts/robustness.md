@@ -68,4 +68,8 @@ The FLAG tier is intentional: there's a meaningful difference between "this answ
 
 See [Evaluation Metrics: Known limitation](metrics.md#known-limitation-numeric-faithfulness-without-entity-linking).
 
+## Why this matters for 2027
+
+As VLMs move from "a human reads the output and decides what to do" toward agentic pipelines where the model's observation directly triggers an autonomous action, the cost of a single bad input asymmetrically outweighs the benefit of being right most of the time — an adversarially-shifted embedding that slips past an undefended OOD guard, or a fluent hallucination that slips past a missing faithfulness check, doesn't just produce a wrong answer on a dashboard; it can trigger a wrong trade, a wrong shipment, a wrong medical flag. Robustness and safety layers are the parts of a VLM system most likely to be treated as "we'll add that later" during a prototype phase and most costly to have skipped once the system is making autonomous decisions. The pattern here — input-layer OOD screening and output-layer faithfulness checking, both cheap enough to run on every single inference, both calibrated against measured false-positive/true-positive tradeoffs rather than a single hand-picked threshold — is designed to be the kind of guardrail that's inexpensive enough to include from day one rather than bolted on after the first costly incident.
+
 [^1]: Hendrycks, D., & Dietterich, T. (2019). Benchmarking Neural Network Robustness to Common Corruptions and Perturbations. *ICLR 2019*. [arXiv:1903.12261](https://arxiv.org/abs/1903.12261)

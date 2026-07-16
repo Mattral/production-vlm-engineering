@@ -44,4 +44,8 @@ Freezing $\sigma_{\text{baseline}}$ from the pre-shift calibration period sidest
 
 In the default config, both detectors achieve zero detection delay — they flag drift at the exact first batch where it's injected. The benchmark sweep (`production-vlm benchmark embedding_drift_active_learning`) characterizes how this delay grows as the shift magnitude decreases toward the detection boundary.
 
+## Why this matters for 2027
+
+Regulatory pressure (the EU AI Act's post-market monitoring obligations for high-risk systems, and equivalents emerging elsewhere) is turning "documented, continuous distribution-shift monitoring" from a best practice into a compliance requirement for deployed ML systems, not just an internal engineering nicety. At the same time, the shift from batch-scored pipelines to streaming/agentic deployments — where a VLM's output directly triggers a downstream action rather than sitting in a dashboard for a human to review — collapses the time window between "the input distribution changed" and "something costly happened as a result." A drift detector that fires after a human notices a KPI dip is not fast enough for a system making autonomous decisions every few seconds. The pattern this module demonstrates — a persistent statistical test for dashboards, an onset-detecting SPC signal for alerting, both closing the loop into an active-learning/retraining trigger rather than just logging a number — is the shape "monitoring" needs to take when the thing being monitored can act on its own conclusions.
+
 [^1]: Montgomery, D.C. (2020). *Introduction to Statistical Quality Control*, 8th edition. Wiley.

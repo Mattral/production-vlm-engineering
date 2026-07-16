@@ -35,5 +35,9 @@ Common working values for fine-tuning: `rank=8-32`, `alpha=2×rank`.
 
 The default config uses 4-bit quantization (`quantization: 4bit`) for the frozen base weights, loading them with `BitsAndBytesConfig(load_in_4bit=True)`. LoRA adapters are trained in bf16. This combination (QLoRA, Dettmers et al., 2023[^2]) enables fine-tuning 7B models on a single 12GB GPU card.
 
+## Why this matters for 2027
+
+As frontier VLMs continue to scale, full fine-tuning becomes economically irrational for the vast majority of real deployments — the gap between "a lab with a training cluster" and "a team that needs a model adapted to their chart format by Friday" only widens. Parameter-efficient adaptation stops being an optimization and becomes the *default* interface for customization: expect adapter marketplaces, mixture-of-adapter serving (swapping LoRA weights per-request without reloading the base model), and on-device personalization (an adapter small enough to ship and update over-the-air) to be standard deployment patterns rather than research curiosities. The pattern demonstrated here — adapt both modalities, quantize the frozen base, validate with a real before/after evaluation harness rather than eyeballing loss curves — is the shape that pattern takes in practice, not just the theory of it.
+
 [^1]: Hu, E. J., et al. (2021). LoRA: Low-Rank Adaptation of Large Language Models. *ICLR 2022*. [arXiv:2106.09685](https://arxiv.org/abs/2106.09685)
 [^2]: Dettmers, T., et al. (2023). QLoRA: Efficient Finetuning of Quantized LLMs. *NeurIPS 2023*. [arXiv:2305.14314](https://arxiv.org/abs/2305.14314)
