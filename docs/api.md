@@ -57,3 +57,23 @@
 ## production_vlm.utils.batching_queue
 
 ::: production_vlm.utils.batching_queue.BatchingQueue
+
+## production_vlm.utils.kv_cache
+
+::: production_vlm.utils.kv_cache.ModelDecoderConfig
+
+::: production_vlm.utils.kv_cache.compute_kv_cache_memory
+
+::: production_vlm.utils.kv_cache.compare_strategies
+
+::: production_vlm.utils.kv_cache.visual_token_count
+
+## production_vlm.utils.observability
+
+::: production_vlm.utils.observability.ObservabilityLogger
+
+::: production_vlm.utils.observability.PrometheusMetricsServer
+
+## production_vlm.utils.retraining
+
+::: production_vlm.utils.retraining.RetrainingTrigger
