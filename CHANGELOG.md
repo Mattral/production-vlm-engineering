@@ -9,6 +9,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-07-23
+
 ### Added (roadmap gap-closure: memory-efficient decoding + distributed 2027 framing)
 
 - **`production_vlm.utils.kv_cache`** — closed-form KV-cache memory analysis across four
@@ -63,6 +65,25 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   standalone tutorial content, never part of CI's actual lint scope, and holding demo-cell code
   to the same bar as production source doesn't serve a purpose); verified `ruff check .` now
   produces zero errors when scanning the entire repository.
+
+- **A second, distinct stale directory — `src/cv_playbook/` — was never excluded from ruff's
+  scope, and was never deleted after the rename either**, unlike `legacy/cv-playbook-original/`
+  above. This is a different artifact: not the preserved "from scratch" educational scripts, but
+  an actual pre-rename copy of the package (`config.py`, `cli.py`, `drift/`, `eval/`, `utils/`)
+  that predates the `robustness/` module and `utils/kv_cache.py`, so it's also out of date, not
+  just misplaced. It isn't wired into packaging (`[tool.hatch.build.targets.wheel]` only ships
+  `src/production_vlm`) and nothing outside itself imports it, so it's inert at runtime — but
+  because it sits under `src/`, which is exactly the path CI's lint step scans
+  (`ruff check src tests examples benchmarks scripts`), it was silently failing that exact
+  command: 14 `ruff check` errors (E501, B905) and 6 files failing `ruff format --check`, 100% of
+  them inside `src/cv_playbook/`. This means the previous changelog entry's claim just above —
+  that `ruff check .` "produces zero errors when scanning the entire repository" — was true only
+  the day it was written; a caught-in-review external audit re-ran the *exact* command from
+  `.github/workflows/ci.yml` (not the abbreviated `ruff check .`) and found CI would currently
+  fail on this. Fixed for now by adding `"src/cv_playbook"` to `[tool.ruff] exclude` in
+  `pyproject.toml`, restoring a clean `ruff check`/`ruff format --check` under the literal CI
+  invocation; full deletion of the directory is deliberately deferred pending a manual content
+  review, and is expected in a follow-up change once that review is done.
 
 - **Stale `cv-playbook` CLI command name in 16 documentation files.** The package was renamed
   from `cv-playbook`/`cv_playbook` to `production-vlm`/`production_vlm` in an earlier session,
