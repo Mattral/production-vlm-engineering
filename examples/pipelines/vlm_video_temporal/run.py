@@ -227,20 +227,28 @@ def sample_adaptive(frames: list[VideoFrame], n_budget: int) -> list[VideoFrame]
 # ---------------------------------------------------------------------------
 
 
-def temporal_grounding_score(prediction: str, per_frame_evidence: list[str]) -> TemporalEvalResult:
+def temporal_grounding_score(prediction: str, reference: str, per_frame_evidence: list[str]) -> TemporalEvalResult:
     """Multi-frame faithfulness: score against each frame's evidence, take the max.
 
     A temporally-grounded answer should be supported by *at least one*
     frame's evidence — the model shouldn't be penalised for not grounding
     in frames where the relevant content doesn't appear. This is the
     natural generalisation of `faithfulness_score` to temporal inputs.
+
+    `reference` must be the true ground-truth answer, not `prediction`
+    itself: `faithfulness_score`'s numeric-accuracy component compares
+    prediction against reference, so self-comparison would always score
+    1.0 regardless of correctness. `per_frame_evidence` must already be
+    restricted to the frames the strategy under test actually sampled —
+    passing the full clip's evidence here would let every strategy "see"
+    frames it dropped, silently erasing any difference between them.
     """
     if not per_frame_evidence:
         return TemporalEvalResult(0.0, False, 0, False)
 
     # Score each frame's evidence separately; the answer only needs to
     # ground in the single most relevant frame, not the concatenation of all of them.
-    per_frame_scores = [faithfulness_score(prediction, prediction, ev).score for ev in per_frame_evidence]
+    per_frame_scores = [faithfulness_score(prediction, reference, ev).score for ev in per_frame_evidence]
     max_frame_score = max(per_frame_scores)
     grounded = max_frame_score > 0.3
 
@@ -271,17 +279,42 @@ def temporal_grounding_score(prediction: str, per_frame_evidence: list[str]) -> 
 
 
 def _mock_vlm_temporal(sample: TemporalSample, sampled_frames: list[VideoFrame]) -> str:
-    """CPU fallback: generates a structured JSON answer using ground-truth metadata.
+    """CPU fallback: simulates a VLM that can only reason over the frames it's shown.
+
+    A real VLM never sees frames a sampling strategy dropped, so this mock
+    must not either: it only returns the true ground-truth answer if the
+    frame it depends on survived sampling. Otherwise it falls back to the
+    best answer supported by the *sampled* frames alone, at lower
+    confidence -- this is what actually makes the strategy comparison
+    meaningful (a strategy that drops the key frame should score worse).
 
     Replace with a real VLM call that receives the sampled frame images
     interleaved with the question prompt:
         'Frame 1: <image> Frame 3: <image> ... Question: ...'
     """
-    answer_obj = {
-        "answer": sample.answer,
-        "frame_references": sample.structured_answer["frame_references"],
-        "confidence": 0.9,
-    }
+    ground_truth_frame_idx = sample.structured_answer["frame_references"][0]
+    sampled_indices = {f.frame_idx for f in sampled_frames}
+
+    if ground_truth_frame_idx in sampled_indices:
+        answer_obj = {
+            "answer": sample.answer,
+            "frame_references": [ground_truth_frame_idx],
+            "confidence": 0.9,
+        }
+    else:
+        best_visible = max(
+            sampled_frames,
+            key=lambda f: f.chart_metadata.values[0] if f.chart_metadata.values else 0,
+        )
+        answer_obj = {
+            "answer": (
+                f"Frame {best_visible.frame_idx} shows the highest value of "
+                f"{best_visible.chart_metadata.values[0]:.1f} {best_visible.chart_metadata.units} "
+                "among the frames available."
+            ),
+            "frame_references": [best_visible.frame_idx],
+            "confidence": 0.5,
+        }
     return json.dumps(answer_obj)
 
 
@@ -378,7 +411,8 @@ def main(config_path: str | None = None) -> dict:
 
             for strategy_name, sampled in strategies.items():
                 prediction = _mock_vlm_temporal(sample, sampled)
-                eval_result = temporal_grounding_score(prediction, sample.per_frame_evidence)
+                sampled_evidence = [f"Frame {f.frame_idx}: {f.chart_metadata.evidence_text}" for f in sampled]
+                eval_result = temporal_grounding_score(prediction, sample.answer, sampled_evidence)
                 results_per_strategy[strategy_name].append(eval_result.temporal_faithfulness)
 
             # Detect scene changes via embedding drift (P0-04 integration demo)
