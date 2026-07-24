@@ -1,6 +1,7 @@
 # Contributing
 
-See [`CONTRIBUTING.md`](../CONTRIBUTING.md) in the repo root for setup instructions and the full contribution guide.
+See [`CONTRIBUTING.md`](https://github.com/Mattral/production-vlm-engineering/blob/main/CONTRIBUTING.md)
+in the repo root for setup instructions and the full contribution guide.
 
 ## Key principles for contributors
 

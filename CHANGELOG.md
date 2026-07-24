@@ -9,6 +9,38 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Fixed
+
+- **`mkdocs build --strict` was failing CI** with two unresolved-link warnings: `docs/index.md`
+  linked to `../ROADMAP.md` and `docs/contributing.md` linked to `../CONTRIBUTING.md`. Both
+  targets are real files, but they live at the repo root, outside `docs_dir` (`docs/`), so
+  MkDocs's strict-mode link checker — which only resolves links against files it collects into
+  the site — can't find them even though they exist on disk one directory up. Fixed by pointing
+  both links at their GitHub blob URLs instead, since `mkdocs.yml` already declares `repo_url`.
+  Verified: `mkdocs build --strict` now exits 0 with no warnings.
+- **`ROADMAP.md` double-counted a bug fix**, then propagated the inflated count into
+  `docs/index.md`. The `SyntheticEmbeddingProxy` shift-direction fix was documented once near
+  the top of the P0-04 section, then listed a second time under P1-02 as one of "three real bugs
+  ... beyond those already documented" — it's the same single code change in
+  `vision_encoder.py`, not two occurrences. `docs/index.md`'s "Six real bugs" claim inherited
+  this error; the true unique count across `ROADMAP.md` is five. Fixed by removing the duplicate
+  entry and correcting both counts.
+- **Two real bugs in `vlm_video_temporal`'s evaluation**, found by noticing all three
+  frame-sampling strategies scored an identical 0.698 — a result that shouldn't be possible if
+  the comparison were real: the composite score was comparing the prediction against itself
+  instead of the true reference answer, and evaluation used the full clip's evidence regardless
+  of which frames a strategy actually sampled, so no strategy could be penalized for dropping
+  the frame it needed. Full mechanism recorded in `ROADMAP.md`. Fixed; strategies now score
+  differently (0.387 / 0.266 / 0.485 on a representative run).
+- **`production-vlm run-example <name>`, the documented console-script entry point, crashed
+  with `ModuleNotFoundError: No module named 'examples'` for every example** — `examples/`
+  isn't part of the installed wheel and the installed script doesn't add the repo root to
+  `sys.path` the way `python -m production_vlm.cli` does. Fixed in `cli.py` by mirroring the
+  `sys.path` pattern each example's `run.py` already uses in the opposite direction. Verified
+  against the actual installed entry point for all 5 examples, not just `python -m`.
+- Bug tally across `ROADMAP.md` and `docs/index.md` updated from five to **seven** to include
+  the two above; both files now agree.
+
 ## [0.2.0] — 2026-07-23
 
 ### Added (roadmap gap-closure: memory-efficient decoding + distributed 2027 framing)
