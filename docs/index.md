@@ -51,5 +51,7 @@ Every fallback path that runs without a GPU or network is clearly labeled — in
 output, in each `results.json` (`ran_with_real_ml_stack`), and in this documentation.
 CPU smoke-test numbers and real GPU numbers are never presented interchangeably.
 
-Six real bugs were found and fixed by running the code rather than only reading it.
-All are documented in-place. See [ROADMAP](../ROADMAP.md) for the full list.
+Seven real bugs were found and fixed by running the code rather than only reading it.
+All are documented in-place. See
+[ROADMAP.md](https://github.com/Mattral/production-vlm-engineering/blob/main/ROADMAP.md)
+in the repo root for the full list.
