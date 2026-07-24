@@ -53,8 +53,42 @@ merely exists.
   own control limits. Both are documented in-place rather than silently fixed, since the
   failure modes are instructive.
 
+- **Two more real bugs found in `vlm_video_temporal` by an external audit that noticed all
+  three frame-sampling strategies scored an identical 0.698**, which shouldn't happen if the
+  strategies are actually being compared: (1) `temporal_grounding_score` was called with
+  `faithfulness_score(prediction, prediction, ev)`, comparing the prediction against itself
+  rather than the real ground-truth `sample.answer`, making the numeric-accuracy half of the
+  composite score a no-op that's always perfect; (2) evaluation was scored against
+  `sample.per_frame_evidence` for the *entire* clip regardless of which frames a strategy
+  actually sampled, and the mock model answered correctly even when the frame it depended on
+  was dropped -- so no strategy could ever be penalized for discarding the key frame, which
+  defeats the purpose of the comparison. Fixed by threading the true reference through, scoring
+  each strategy only against the evidence for the frames it kept, and making the mock model
+  fall back to a lower-confidence guess when the key frame isn't in its sample. Scores now
+  genuinely differ across strategies (0.387 / 0.266 / 0.485 on a representative run).
+- **One real packaging bug: the documented `production-vlm run-example <name>` command
+  (the installed console-script entry point) crashed with `ModuleNotFoundError: No module
+  named 'examples'` for every example.** `examples/` lives at the repo root and isn't part of
+  the installed wheel; `python -m production_vlm.cli` implicitly adds the caller's working
+  directory to `sys.path` and so happens to find it, but the installed script does not, since
+  its own location becomes `sys.path[0]` instead. This means `docs/contributing.md`'s explicit
+  instruction to contributors -- run the example via that exact command -- didn't work as
+  written. Fixed in `cli.py` by inserting the repo root onto `sys.path` before importing an
+  example module, mirroring the `sys.path` insertion each example's `run.py` already does in
+  the opposite direction (adding `src/` so it can find `production_vlm`). Verified against the
+  actual installed entry point, not just `python -m`, for all 5 examples.
+- **Running tally: seven real bugs found and fixed by actually running the code** across this
+  project's history (two in P0-04, two more in P1-02, two in `vlm_video_temporal`, one in the
+  CLI packaging), none caught by writing or reading the code alone.
+
 - **Repository renamed** from `computer-vision-playbook` / `cv_playbook` to `production-vlm-engineering` / `production_vlm` to accurately reflect the project's focus and production-engineering scope.
-- **Three real bugs found and fixed in P1-02** beyond those already documented: (1) `SyntheticEmbeddingProxy` shift direction regenerated per-sample instead of fixed (cancelled out across a batch); (2) `_find_plot_area_bounds` used an absolute spine-darkness threshold that broke under contrast and blur perturbation; (3) chart reader assumed bars spanned the full figure width rather than the matplotlib axes area (a critical misunderstanding of figure layout that caused every bar to report identical height). All three documented in-place.
+- **Two more real bugs found and fixed in P1-02** beyond those already documented above
+  (the `SyntheticEmbeddingProxy` shift-direction bug is the same fix noted earlier in this
+  file, not a separate occurrence — it is not re-counted here): (1) `_find_plot_area_bounds`
+  used an absolute spine-darkness threshold that broke under contrast and blur perturbation;
+  (2) chart reader assumed bars spanned the full figure width rather than the matplotlib axes
+  area (a critical misunderstanding of figure layout that caused every bar to report identical
+  height). Both documented in-place.
 - **Observability module** (`production_vlm.utils.observability`): structured JSONL event log (zero dependencies, always emitted) plus optional Prometheus metrics server (graceful no-op when `prometheus_client` not installed). All drift, OOD, and guard events are versioned with `schema_version` for forward-compatible log consumption. This was a specific P0-04 roadmap requirement ("log metrics, optional Prometheus exposition") that had been deferred until this session.
 
 - **Retraining trigger** (`production_vlm.utils.retraining`): closes the drift → active-learning → retrain feedback loop explicitly called out in P0-04 ("integrate with training example, trigger retraining simulation on drifted data"). Key design: `_fire()` drains exactly `queue_threshold` items per invocation so a large `enqueue_batch()` call fires multiple times correctly rather than coalescing all samples into one oversized batch. This was a real bug found during testing (9 items at threshold=3 fired once with 9 instead of three times with 3 each) and fixed.
