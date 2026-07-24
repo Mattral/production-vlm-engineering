@@ -11,6 +11,21 @@ from __future__ import annotations
 import argparse
 import importlib
 import sys
+from pathlib import Path
+
+# `examples/` lives at the repo root, alongside `src/`, and is not part of
+# the installed wheel (only `production_vlm` itself is packaged). `python -m
+# production_vlm.cli` implicitly adds the current working directory to
+# sys.path, so it finds `examples/` when run from the repo root -- but the
+# installed `production-vlm` console-script entry point does not, since its
+# own script location (not the caller's cwd) becomes sys.path[0]. This
+# mirrors the sys.path insertion each example's run.py already does in the
+# opposite direction (adding src/ so it can find production_vlm), so both
+# entry points work the same way for this repo's editable-install,
+# run-from-a-clone development workflow.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 _EXAMPLES = {
     "vlm_chart_finetune": "examples.pipelines.vlm_chart_finetune.run",
