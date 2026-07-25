@@ -26,6 +26,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from production_vlm.lineage import ArtifactRef, LineageStore, content_hash
+
 
 @dataclass
 class QueuedSample:
@@ -86,6 +88,8 @@ class RetrainingTrigger:
         callback: Callable[[list[QueuedSample]], None] | None = None,
         cooldown_s: float = 300.0,
         max_queue_size: int = 1000,
+        lineage_store: LineageStore | None = None,
+        base_model_id: str = "model_base",
     ) -> None:
         if queue_threshold < 1:
             raise ValueError("queue_threshold must be >= 1")
@@ -97,6 +101,8 @@ class RetrainingTrigger:
         self._last_trigger_at: float = 0.0
         self._trigger_count: int = 0
         self._history: list[RetrainingRun] = []
+        self._lineage_store = lineage_store
+        self._current_model_id = base_model_id
 
     def enqueue(self, sample: QueuedSample) -> bool:
         """Add a sample to the retraining queue. Returns True if a retraining run was triggered."""
@@ -142,6 +148,7 @@ class RetrainingTrigger:
         t0 = time.time()
         try:
             self.callback(samples)
+            duration_s = time.time() - t0
             self._history.append(
                 RetrainingRun(
                     trigger_id=trigger_id,
@@ -149,9 +156,11 @@ class RetrainingTrigger:
                     triggered_at_utc=t0,
                     trigger_reason=f"queue_threshold={self.queue_threshold} reached",
                     success=True,
-                    duration_s=time.time() - t0,
+                    duration_s=duration_s,
                 )
             )
+            if self._lineage_store is not None:
+                self._record_lineage(trigger_id, samples)
         except Exception as e:
             self._history.append(
                 RetrainingRun(
@@ -164,6 +173,46 @@ class RetrainingTrigger:
                     duration_s=time.time() - t0,
                 )
             )
+
+    def _record_lineage(self, trigger_id: int, samples: list[QueuedSample]) -> None:
+        """Emit one lineage edge: base model + this batch -> the newly retrained model.
+
+        Called with ``_lock`` held (from ``_fire``). The produced model id
+        becomes next run's consumed base model, so ``N`` retraining cycles
+        form an ``N``-hop chain that ``JSONLLineageStore.get_chain()`` can
+        walk end-to-end -- from the currently deployed model back through
+        every retraining event and the batch that triggered each one.
+        """
+        reasons = sorted({s.flagged_by for s in samples})
+        batch_ref = ArtifactRef(
+            artifact_id=f"retrain_batch_{trigger_id}",
+            artifact_type="dataset",
+            content_hash=content_hash([(s.embedding_index, s.batch_idx, s.flagged_by) for s in samples]),
+            metadata={"n_samples": len(samples), "flagged_by": reasons},
+        )
+        base_model_ref = ArtifactRef(
+            artifact_id=self._current_model_id,
+            artifact_type="model",
+        )
+        new_model_id = f"model_v{trigger_id}"
+        new_model_ref = ArtifactRef(
+            artifact_id=new_model_id,
+            artifact_type="model",
+            content_hash=content_hash({"base": self._current_model_id, "batch": batch_ref.artifact_id}),
+            metadata={"trigger_id": trigger_id},
+        )
+        self._lineage_store.record(
+            produced=new_model_ref,
+            consumed=[base_model_ref, batch_ref],
+            triggered_by=",".join(reasons),
+        )
+        self._current_model_id = new_model_id
+
+    @property
+    def current_model_id(self) -> str:
+        """The artifact id of the most recently (re)trained model -- the head of the lineage chain."""
+        with self._lock:
+            return self._current_model_id
 
     @property
     def queue_size(self) -> int:
