@@ -56,6 +56,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
 from production_vlm.drift import CosineDriftDetector, EWMADriftDetector, select_for_active_learning  # noqa: E402
+from production_vlm.lineage import JSONLLineageStore  # noqa: E402
 from production_vlm.utils import set_seed, timer  # noqa: E402
 from production_vlm.utils.console import Console  # noqa: E402
 from production_vlm.utils.observability import ObservabilityLogger, PrometheusMetricsServer  # noqa: E402
@@ -133,10 +134,16 @@ def main(config_path: str | None = None) -> dict:
     # When the active-learning queue reaches `retraining_threshold` samples,
     # the callback fires (default: prints what a real job would do; replace
     # with a call to train_real() or a cluster job submission in production).
+    # lineage_store closes the loop the drift/retraining machinery alone
+    # can't: not just "a retrain happened" but "which drift event, which
+    # batch of flagged samples, and which prior model version produced
+    # this exact artifact" -- queryable after the fact via get_chain().
+    lineage_store = JSONLLineageStore(output_dir / "lineage.jsonl", run_id=f"{cfg['name']}_lineage")
     retrain_threshold = cfg.get("retraining", {}).get("queue_threshold", 15)
     retrain_trigger = RetrainingTrigger(
         queue_threshold=retrain_threshold,
         cooldown_s=cfg.get("retraining", {}).get("cooldown_s", 0),
+        lineage_store=lineage_store,
     )
 
     console.print(f"Reference set: {reference_embeddings.shape[0]} samples, centroid established.")
@@ -251,6 +258,7 @@ def main(config_path: str | None = None) -> dict:
 
     obs_summary = obs_logger.summary()
     retrain_summary = retrain_trigger.summary()
+    lineage_chain = lineage_store.get_chain(retrain_trigger.current_model_id)
     results = {
         "config_name": cfg["name"],
         "n_batches": cfg["stream"]["n_batches"],
@@ -262,6 +270,19 @@ def main(config_path: str | None = None) -> dict:
         "observability": {
             "events_log": str(obs_logger.log_path),
             "summary": obs_summary,
+        },
+        "lineage": {
+            "log": str(lineage_store.log_path),
+            "current_model_id": retrain_trigger.current_model_id,
+            "chain_length": len(lineage_chain),
+            "chain": [
+                {
+                    "produced": rec["produced"]["artifact_id"],
+                    "consumed": [c["artifact_id"] for c in rec["consumed"]],
+                    "triggered_by": rec["triggered_by"],
+                }
+                for rec in lineage_chain
+            ],
         },
         "batches": [
             {
@@ -297,6 +318,12 @@ def main(config_path: str | None = None) -> dict:
     console.print(
         f"[bold green]Observability events: {obs_logger.log_path} ({obs_summary['total_events']} events)[/bold green]"
     )
+    if lineage_chain:
+        chain_str = " → ".join(rec["produced"]["artifact_id"] for rec in lineage_chain)
+        console.print(
+            f"[bold green]Lineage: {lineage_store.log_path} "
+            f"(model_base → {chain_str}, {len(lineage_chain)} retraining edge(s))[/bold green]"
+        )
     return results
 
 
