@@ -9,6 +9,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-07-24
+
 ### Fixed
 
 - **`mkdocs build --strict` was failing CI** with two unresolved-link warnings: `docs/index.md`
