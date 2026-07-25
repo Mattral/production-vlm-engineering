@@ -52,6 +52,7 @@ nav:
   - Concepts:
       - LoRA Adaptation: concepts/lora.md
       - Drift Detection: concepts/drift.md
+      - Model & Data Lineage: concepts/lineage.md
       - Evaluation Metrics: concepts/metrics.md
       - OOD & Robustness: concepts/robustness.md
   - Benchmark Results: benchmark_report.md
