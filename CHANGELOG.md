@@ -9,7 +9,18 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
-## [0.3.0] — 2026-07-24
+## [1.4.0] — 2026-07-24
+
+> **Version note:** this project's internal version tracking (`pyproject.toml`/this file)
+> restarted from `0.1.0` in a working copy that was never reconciled with this repo's actual
+> GitHub tags, `v1.2.0` and `v1.3.0` — so the `0.1.0`–`0.3.0` entries below predate, and are
+> disconnected from, those two real releases. Verified directly against the live repo: `main`
+> is a genuine superset of `v1.3.0` (every file in that tag is still present, plus everything
+> below), so nothing was lost — only the version *number* was out of sync. This entry, first
+> internally labeled `0.3.0`, is renumbered `1.4.0` (SemVer MINOR bump from `1.3.0`, since it's
+> new backward-compatible functionality) before ever being tagged, to continue the real release
+> history instead of forking it. Earlier entries are left as originally written rather than
+> renumbered, since git history for those is already public.
 
 ### Added
 
