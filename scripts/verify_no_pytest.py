@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+import tempfile
 import time
 import traceback
 from pathlib import Path
@@ -34,6 +35,7 @@ import numpy as np  # noqa: E402
 from production_vlm.config import ConfigError, ExperimentConfig  # noqa: E402
 from production_vlm.drift import CosineDriftDetector, EWMADriftDetector, select_for_active_learning  # noqa: E402
 from production_vlm.eval import faithfulness_score, grounding_score, numeric_accuracy  # noqa: E402
+from production_vlm.lineage import ArtifactRef, JSONLLineageStore, content_hash  # noqa: E402
 from production_vlm.robustness import (  # noqa: E402
     GuardDecision,
     HallucinationGuard,
@@ -504,6 +506,54 @@ def test_kv_cache() -> None:
     )
 
 
+def test_lineage() -> None:
+    print("test_lineage")
+    check("lineage: content_hash deterministic", content_hash({"a": 1, "b": 2}) == content_hash({"b": 2, "a": 1}))
+    check("lineage: content_hash differs for different content", content_hash({"a": 1}) != content_hash({"a": 2}))
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        store = JSONLLineageStore(Path(tmpdir) / "lineage.jsonl", run_id="verify_run")
+        store.record(
+            produced=ArtifactRef(artifact_id="model_v1", artifact_type="model"),
+            consumed=[ArtifactRef(artifact_id="model_base", artifact_type="model")],
+            triggered_by="drift_ks",
+        )
+        store.record(
+            produced=ArtifactRef(artifact_id="model_v2", artifact_type="model"),
+            consumed=[ArtifactRef(artifact_id="model_v1", artifact_type="model")],
+            triggered_by="drift_ewma",
+        )
+        records = store.all_records()
+        check("lineage: two records persisted", len(records) == 2)
+        check("lineage: triggered_by persisted", records[0]["triggered_by"] == "drift_ks")
+
+        chain = store.get_chain("model_v2")
+        produced_ids = [r["produced"]["artifact_id"] for r in chain]
+        check("lineage: multi-hop chain resolves in causal order", produced_ids == ["model_v1", "model_v2"])
+        check("lineage: unknown artifact returns empty chain", store.get_chain("does_not_exist") == [])
+
+    # RetrainingTrigger integration: a successful run must emit a lineage
+    # edge chaining to the previous model id; a failed run must not.
+    with tempfile.TemporaryDirectory() as tmpdir:
+        store2 = JSONLLineageStore(Path(tmpdir) / "lineage2.jsonl")
+        trigger = RetrainingTrigger(queue_threshold=2, callback=lambda s: None, cooldown_s=0, lineage_store=store2)
+        check("lineage: trigger starts at base model id", trigger.current_model_id == "model_base")
+        trigger.enqueue_batch(
+            [QueuedSample(embedding_index=i, batch_idx=0, novelty_score=0.5, flagged_by="ood") for i in range(2)]
+        )
+        check("lineage: trigger advances model id after success", trigger.current_model_id == "model_v1")
+        check("lineage: one edge recorded for one successful run", len(store2.all_records()) == 1)
+
+        def bad_callback(samples):
+            raise RuntimeError("training failed")
+
+        trigger2 = RetrainingTrigger(queue_threshold=2, callback=bad_callback, cooldown_s=0, lineage_store=store2)
+        trigger2.enqueue_batch(
+            [QueuedSample(embedding_index=i, batch_idx=0, novelty_score=0.5, flagged_by="ood") for i in range(2)]
+        )
+        check("lineage: failed run adds no new edge", len(store2.all_records()) == 1)
+
+
 def main() -> int:
     suites = [
         test_config,
@@ -516,6 +566,7 @@ def main() -> int:
         test_observability_retraining,
         test_structured_extraction,
         test_kv_cache,
+        test_lineage,
     ]
     for suite in suites:
         try:

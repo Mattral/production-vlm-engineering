@@ -9,6 +9,33 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-07-24
+
+### Added
+
+- **`production_vlm.lineage`: model & data provenance tracking**, added in response to
+  external review feedback claiming the repo lacked "automated model observability & data
+  lineage." That claim was only partially accurate — drift monitoring (`CosineDriftDetector`/
+  `EWMADriftDetector`) and automated retraining on threshold breach (`RetrainingTrigger`)
+  already existed and were independently re-verified working; the review evidently didn't
+  check. The real gap was lineage: nothing connected a model artifact back to the data, config,
+  and retraining event that produced it. Added a narrow `LineageStore` interface (`record`,
+  `all_records`) with a zero-dependency `JSONLLineageStore` default, matching
+  `ObservabilityLogger`'s schema-versioned append-only JSONL pattern rather than hard-adopting
+  MLflow/DVC/Delta Lake as the feedback suggested — those require external infrastructure this
+  repo's CPU-reproducible design avoids everywhere else. `RetrainingTrigger` now takes an
+  optional `lineage_store` and emits one real provenance edge per successful run (never on a
+  failed one); `embedding_drift_active_learning` demonstrates a full end-to-end chain
+  (`model_base → model_v1 → model_v2`) queryable via `get_chain()`. Content identity uses
+  `hashlib.sha256` over canonical JSON, not Python's `hash()` — the exact non-determinism
+  mistake already made once in this codebase (`SyntheticEmbeddingProxy`), applied correctly
+  here from the start instead of found as a bug later. A worked MLflow adapter stub is
+  documented in the new `docs/concepts/lineage.md`, following the same "documented extension
+  path, not wired in by default" treatment already used for TensorRT/OpenVINO in P0-03. 20 new
+  tests (`tests/test_lineage.py`) plus `scripts/verify_no_pytest.py` coverage; full suite now
+  137/137 (was 117), stdlib fallback 96/96 (was 86). `ruff check`/`ruff format --check` and
+  `mkdocs build --strict` re-verified clean against the exact CI commands.
+
 ## [0.2.1] — 2026-07-24
 
 ### Fixed
