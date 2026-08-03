@@ -78,9 +78,18 @@ merely exists.
   example module, mirroring the `sys.path` insertion each example's `run.py` already does in
   the opposite direction (adding `src/` so it can find `production_vlm`). Verified against the
   actual installed entry point, not just `python -m`, for all 5 examples.
-- **Running tally: seven real bugs found and fixed by actually running the code** across this
+- **Two more real bugs, the first two ever found by an actual GPU run** of
+  `vlm_chart_finetune`/`vlm_edge_inference`'s real (non-CPU-fallback) paths, both previously
+  unverifiable in this repo's own CPU-only, network-restricted dev environment: (1)
+  `AutoModelForVision2Seq`, removed outright in `transformers` v5.0.0, breaking the fine-tuning
+  import; (2) an ONNX dynamic-shape export hint for image height/width that a plain ViT's fixed
+  position embeddings can never actually satisfy, regardless of torch version. Both fixed; see
+  `CHANGELOG.md` for the full mechanism. (`onnxscript` was also added as an explicit `onnx`
+  extra dependency for the same run's separate missing-dependency finding -- not tallied as a
+  third bug here, since it's a missing declaration, not incorrect logic.)
+- **Running tally: nine real bugs found and fixed by actually running the code** across this
   project's history (two in P0-04, two more in P1-02, two in `vlm_video_temporal`, one in the
-  CLI packaging), none caught by writing or reading the code alone.
+  CLI packaging, two in the real GPU paths), none caught by writing or reading the code alone.
 
 - **Repository renamed** from `computer-vision-playbook` / `cv_playbook` to `production-vlm-engineering` / `production_vlm` to accurately reflect the project's focus and production-engineering scope.
 - **Two more real bugs found and fixed in P1-02** beyond those already documented above

@@ -9,6 +9,35 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [1.4.1] — 2026-07-28
+
+### Fixed
+
+- **Two real bugs found by the first actual GPU run of `04_gpu_verification_colab.ipynb`** —
+  both previously unverifiable in this repo's CPU-only, network-restricted dev environment,
+  and both genuine, not environment noise:
+  - `vlm_chart_finetune`'s real path imported `AutoModelForVision2Seq`, which `transformers`
+    v5.0.0 (Jan 2026) removed outright in favor of `AutoModelForImageTextToText` — not
+    deprecated, actually gone, so any current `pip install -e ".[ml]"` (the `ml` extra pins
+    `transformers>=4.45.0` with no upper bound) hit an `ImportError` before training could even
+    start. Fixed with a try/except compatibility import so the code works across both old and
+    new `transformers` installs, rather than just bumping the pin and breaking older ones.
+  - `vlm_edge_inference`'s real ONNX export marked image height/width as dynamic axes for
+    `google/vit-base-patch16-224`. `torch.onnx.export`'s current default (`torch>=2.9`) traces
+    via `torch.export`, and correctly rejected this: a plain ViT's absolute position embeddings
+    are fixed for one specific patch grid, so 224 is a traced constant in the graph, not a real
+    variable — the dynamic-shape hint was never valid for this architecture, no matter the torch
+    version. Fixed by exporting one fixed-shape model per size in `benchmark.image_sizes`
+    (only the batch dimension is ever marked dynamic now) instead of assuming one dynamic
+    export could serve every tested size; removed the now-inert `dynamic_image_size` config key.
+  - Also added `onnxscript>=0.2.0` to the `onnx` extra: `torch>=2.9` stopped bundling it, and
+    its now-default exporter requires it separately — a `ModuleNotFoundError` that's easy to
+    mistake for the `TorchExportError` above but is a different, unrelated missing dependency.
+  - `04_gpu_verification_colab.ipynb` updated to match: the manual "upgrade transformers +
+    onnxscript, then restart the runtime" workaround the first real run needed is no longer
+    necessary now that both are fixed/declared properly — plain `pip install -e ".[ml,onnx,cli]"`
+    is enough, no restart required.
+
 ## [1.4.0] — 2026-07-24
 
 > **Version note:** this project's internal version tracking (`pyproject.toml`/this file)
