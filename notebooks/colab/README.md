@@ -7,10 +7,16 @@ Interactive notebooks designed for Google Colab — no local setup required. Eac
 | 01 · Evaluation Metrics | `numeric_accuracy`, `grounding_score`, `faithfulness_score` — why BLEU fails on chart answers | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Mattral/production-vlm-engineering/blob/main/notebooks/colab/01_evaluation_metrics_colab.ipynb) |
 | 02 · Drift Detection | `CosineDriftDetector`, `EWMADriftDetector` (frozen-baseline SPC), active learning triage | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Mattral/production-vlm-engineering/blob/main/notebooks/colab/02_drift_detection_colab.ipynb) |
 | 03 · Robustness & Safety | Perturbation sweep, kNN OOD detection, hallucination guard, production wrapper | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Mattral/production-vlm-engineering/blob/main/notebooks/colab/03_robustness_guard_colab.ipynb) |
+| 04 · Real GPU Paths | Runs the *real* (non-CPU-fallback) `vlm_chart_finetune` QLoRA fine-tune and `vlm_edge_inference` ONNX export/quantization — requires a GPU runtime | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Mattral/production-vlm-engineering/blob/main/notebooks/colab/04_gpu_verification_colab.ipynb) |
 
-## No GPU required
+## GPU requirements
 
-All three notebooks use only the CPU-only core dependencies. The package is installed directly from GitHub at the start of each notebook.
+Notebooks 01–03 use only the CPU-only core dependencies and run in 1–3 minutes on any runtime.
+**Notebook 04 is the exception**: it installs the full `[ml,onnx]` extras and needs a GPU
+runtime (`Runtime → Change runtime type → T4 GPU`) — `bitsandbytes` 4-bit quantization requires
+CUDA. This is deliberate, not an oversight: the repo's own development/CI environment has
+neither a GPU nor network access to Hugging Face Hub, so the *real* path in these two examples
+has never been run anywhere except here.
 
 ## Local notebooks (pre-executed)
 
