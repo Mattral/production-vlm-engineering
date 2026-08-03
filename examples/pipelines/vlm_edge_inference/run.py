@@ -114,8 +114,28 @@ def _has_real_export_stack() -> bool:
 # ---------------------------------------------------------------------------
 
 
-def export_real_model_to_onnx(cfg: dict) -> Path:
-    """Export `cfg['model']['checkpoint']` to ONNX via `optimum`/`torch.onnx`."""
+def export_real_model_to_onnx(cfg: dict, image_size: int) -> Path:
+    """Export `cfg['model']['checkpoint']` to ONNX via `torch.onnx.export`, fixed at `image_size`.
+
+    Only the batch dimension is ever marked dynamic. Found via a real GPU run
+    (this path is untestable in the CPU-only, network-restricted dev
+    environment this repo is otherwise verified in): a standard
+    `ViTModel` has a *fixed* absolute position-embedding table sized for
+    exactly one patch grid (14x14 for a 224px/patch16 checkpoint), so
+    `torch.export`'s tracer -- the backend `torch.onnx.export` now uses by
+    default -- correctly rejects a height/width dynamic-shape hint with a
+    trace-time `TorchExportError`, because the model's actual computation
+    graph has 224 baked in as a constant, not a traced variable. That's the
+    tracer doing its job, not a bug in the tracer: dynamic spatial
+    resolution for a plain ViT would require position-embedding
+    interpolation (as e.g. DINOv2 implements), which this checkpoint's
+    `ViTModel` does not do. So instead of one dynamic-shape export serving
+    every size in `cfg['benchmark']['image_sizes']`, the caller exports one
+    fixed-shape model per size -- correct for this architecture, and it
+    generalizes: swapping in a checkpoint that *does* support
+    `interpolate_pos_encoding` only requires changing this function, not
+    the benchmark loop that calls it.
+    """
     import torch
     from transformers import AutoModel
 
@@ -123,18 +143,11 @@ def export_real_model_to_onnx(cfg: dict) -> Path:
     model = AutoModel.from_pretrained(checkpoint)
     model.eval()
 
-    image_size = cfg["benchmark"]["image_sizes"][0]
     dummy_input = torch.randn(1, 3, image_size, image_size)
 
     output_dir = Path(cfg["export"]["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
-    onnx_path = output_dir / "model_fp32.onnx"
-
-    dynamic_axes = (
-        {"pixel_values": {0: "batch", 2: "height", 3: "width"}, "output": {0: "batch"}}
-        if cfg["export"]["dynamic_image_size"]
-        else None
-    )
+    onnx_path = output_dir / f"model_fp32_{image_size}px.onnx"
 
     torch.onnx.export(
         model,
@@ -142,10 +155,10 @@ def export_real_model_to_onnx(cfg: dict) -> Path:
         str(onnx_path),
         input_names=["pixel_values"],
         output_names=["output"],
-        dynamic_axes=dynamic_axes,
+        dynamic_axes={"pixel_values": {0: "batch"}, "output": {0: "batch"}},
         opset_version=cfg["export"]["onnx_opset"],
     )
-    console.print(f"[green]Exported ONNX model to {onnx_path}[/green]")
+    console.print(f"[green]Exported ONNX model ({image_size}px, batch-dynamic) to {onnx_path}[/green]")
     return onnx_path
 
 
@@ -372,11 +385,16 @@ def main(config_path: str | None = None) -> dict:
         console.print(
             "[green]onnx/onnxruntime/torch/transformers detected -- running real export + quantization path.[/green]"
         )
-        with timer("export to ONNX"):
-            fp32_path = export_real_model_to_onnx(cfg)
-        with timer("dynamic INT8 quantization"):
-            int8_path = quantize_real_model(fp32_path, cfg)
-        model_paths = {"fp32": fp32_path, "dynamic_int8": int8_path}
+        # One export per benchmarked image size, not one dynamic-shape
+        # export shared across all of them -- see export_real_model_to_onnx's
+        # docstring for why a plain ViT checkpoint can't do the latter.
+        model_paths: dict[int, dict[str, Path]] = {}
+        for image_size in cfg["benchmark"]["image_sizes"]:
+            with timer(f"export to ONNX ({image_size}px)"):
+                fp32_path = export_real_model_to_onnx(cfg, image_size)
+            with timer(f"dynamic INT8 quantization ({image_size}px)"):
+                int8_path = quantize_real_model(fp32_path, cfg)
+            model_paths[image_size] = {"fp32": fp32_path, "dynamic_int8": int8_path}
     else:
         console.print(
             "[yellow]No onnx/onnxruntime/torch/transformers + network stack detected -- running the "
@@ -384,13 +402,15 @@ def main(config_path: str | None = None) -> dict:
             '`pip install -e ".[ml,onnx]"` with network access '
             "and re-run for real ONNX/quantization numbers.[/yellow]"
         )
-        model_paths = {"fp32": None, "dynamic_int8": None}
+        model_paths = {
+            image_size: {"fp32": None, "dynamic_int8": None} for image_size in cfg["benchmark"]["image_sizes"]
+        }
 
     for image_size in cfg["benchmark"]["image_sizes"]:
         for batch_size in cfg["benchmark"]["batch_sizes"]:
             for variant in ["fp32", "dynamic_int8"]:
                 if real_stack:
-                    metrics = benchmark_onnx_session(model_paths[variant], cfg, image_size, batch_size)
+                    metrics = benchmark_onnx_session(model_paths[image_size][variant], cfg, image_size, batch_size)
                 else:
                     metrics = benchmark_synthetic_backbone(
                         cfg, quantized=(variant == "dynamic_int8"), image_size=image_size, batch_size=batch_size

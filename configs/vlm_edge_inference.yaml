@@ -12,7 +12,14 @@ model:
 
 export:
   onnx_opset: 17
-  dynamic_image_size: true
+  # No `dynamic_image_size` flag here anymore -- found via a real GPU run
+  # that a plain ViT checkpoint's fixed absolute position embeddings make
+  # a single dynamic-height/width export invalid (torch.export's tracer
+  # correctly rejects it; see export_real_model_to_onnx's docstring). One
+  # fixed-shape model is now exported per size in `benchmark.image_sizes`
+  # below instead -- not configurable per-checkpoint here, since whether
+  # true dynamic sizing is even possible depends on the model architecture,
+  # not a flag.
   output_dir: "outputs/vlm_edge_inference/onnx"
 
 quantization:

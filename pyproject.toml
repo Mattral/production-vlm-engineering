@@ -1,6 +1,6 @@
 [project]
 name = "production-vlm-engineering"
-version = "1.4.0"
+version = "1.4.1"
 description = "Reproducible production-grade multimodal vision pipelines, efficient adaptation, and MLOps for 2026-2027 frontier systems."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,7 +29,18 @@ ml = [
   "scikit-learn>=1.5.0",
 ]
 cli = ["rich>=13.7.0", "typer>=0.12.0"]
-onnx = ["onnx>=1.16.0", "onnxruntime>=1.18.0", "optimum>=1.21.0"]
+onnx = [
+  "onnx>=1.16.0",
+  "onnxruntime>=1.18.0",
+  "optimum>=1.21.0",
+  # torch>=2.9's torch.onnx.export defaults to the dynamo-based exporter,
+  # which requires onnxscript as a separate package -- torch stopped
+  # bundling it. Found via a real Colab run on a current torch install;
+  # without this, export_real_model_to_onnx() fails with
+  # ModuleNotFoundError, not the TorchExportError this extra doesn't fix
+  # (see CHANGELOG.md for that one -- a separate, already-fixed bug).
+  "onnxscript>=0.2.0",
+]
 serving = ["fastapi>=0.112.0", "uvicorn>=0.30.0"]
 demo = ["gradio>=4.40.0"]
 dev = [

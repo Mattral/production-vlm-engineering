@@ -274,14 +274,28 @@ def train_real(cfg: ExperimentConfig, train_set, logger: RunLogger) -> None:
     """
     import torch
     from peft import LoraConfig, get_peft_model
-    from transformers import AutoModelForVision2Seq, AutoProcessor, BitsAndBytesConfig
+
+    # `AutoModelForVision2Seq` was removed outright in transformers v5.0.0
+    # (Jan 2026) in favor of `AutoModelForImageTextToText` -- not just
+    # deprecated, actually gone, so a bare import breaks on any environment
+    # with a current transformers install. Found via a real Colab GPU run:
+    # `pyproject.toml`'s `ml` extra pins `transformers>=4.45.0` with no
+    # upper bound, so `pip install -e ".[ml]"` today resolves to v5.x, and
+    # the CPU-only dev/CI environment this repo is otherwise verified in
+    # never installs `transformers` at all, so this import path had never
+    # actually been exercised until run on real hardware.
+    try:
+        from transformers import AutoModelForImageTextToText as _AutoVLMModel
+    except ImportError:
+        from transformers import AutoModelForVision2Seq as _AutoVLMModel
+    from transformers import AutoProcessor, BitsAndBytesConfig
 
     quant_config = None
     if cfg.model.quantization == "4bit":
         quant_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.bfloat16)
 
     processor = AutoProcessor.from_pretrained(cfg.model.checkpoint, trust_remote_code=cfg.model.trust_remote_code)
-    model = AutoModelForVision2Seq.from_pretrained(
+    model = _AutoVLMModel.from_pretrained(
         cfg.model.checkpoint,
         quantization_config=quant_config,
         torch_dtype=torch.bfloat16,
