@@ -1,6 +1,6 @@
 [project]
 name = "production-vlm-engineering"
-version = "1.4.1"
+version = "1.4.2"
 description = "Reproducible production-grade multimodal vision pipelines, efficient adaptation, and MLOps for 2026-2027 frontier systems."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -66,7 +66,7 @@ packages = ["src/production_vlm"]
 [tool.ruff]
 line-length = 120
 target-version = "py310"
-exclude = ["legacy", "notebooks", "src/cv_playbook"]
+exclude = ["legacy", "notebooks", "src/cv_playbook", "*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

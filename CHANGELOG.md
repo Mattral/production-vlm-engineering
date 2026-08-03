@@ -9,6 +9,12 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [1.4.2] — 2026-08-03
+
+### Fixed
+
+- **`ruff format --check` started failing in CI on a markdown file, `examples/pipelines/vlm_video_temporal/README.md`** — genuinely, not the fabricated report earlier in this project's history that looked identical at a glance. Root cause: `pyproject.toml`'s `dev` extra pins `ruff>=0.6.0` with no upper bound, and ruff 0.16.0 stabilized markdown formatting (previously gated behind `--preview`, where it hard-errored instead of running: `ruff 0.15.22` refuses `ruff format --check` on a `.md` file outright with "Markdown formatting is experimental, enable preview mode"). Any fresh `pip install -e ".[dev,cli]"` today resolves the newest ruff and silently starts reformatting README code samples that were never meant to be enforced — confirmed by reproducing the exact CI failure locally with `ruff==0.16.1` against the real repo, then confirming it does *not* occur on `ruff==0.15.22`. Fixed by adding `"*.md"` to `[tool.ruff] exclude`: ruff's lint rules (`E`, `F`, `I`, `UP`, `B`) were never meaningful for markdown anyway, so this loses no real coverage. Verified clean on both `0.15.22` and `0.16.1`.
+
 ## [1.4.1] — 2026-07-28
 
 ### Fixed
