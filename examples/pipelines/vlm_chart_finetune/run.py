@@ -319,9 +319,39 @@ def train_real(cfg: ExperimentConfig, train_set, logger: RunLogger) -> None:
     step = 0
     for epoch in range(cfg.train.epochs):
         for chart in train_set:
-            prompt = f"Question: {chart.question}\nAnswer:"
-            inputs = processor(text=prompt, images=chart.image, return_tensors="pt").to(model.device)
-            labels = processor(text=chart.answer, return_tensors="pt").input_ids.to(model.device)
+            # Qwen2-VL (like most current VLM processors) does not
+            # auto-insert image placeholder tokens from a bare text string --
+            # `apply_chat_template` is what expands a `{"type": "image"}`
+            # content item into the model's actual image-token markup
+            # (`<|vision_start|><|image_pad|><|vision_end|>` for this model),
+            # and the subsequent `processor(...)` call is what expands that
+            # single `<|image_pad|>` into the right *count* of tokens to
+            # match this image's actual patch grid. Skipping this step (a
+            # bare f-string prompt, as this code did until a real GPU run
+            # caught it) produces a text sequence with zero image tokens
+            # while the vision tower still emits real image features --
+            # `ValueError: Image features and image tokens do not match,
+            # tokens: 0, features: 140` is that mismatch surfacing at the
+            # first forward pass, not a flaky or environment-specific error.
+            question = f"Question: {chart.question}\nAnswer:"
+            messages = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": question}]}]
+            prompt_text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            full_text = prompt_text + chart.answer + processor.tokenizer.eos_token
+
+            inputs = processor(text=[full_text], images=[chart.image], return_tensors="pt").to(model.device)
+
+            # labels must be the same length as input_ids so the model's
+            # internal shift-and-compute-loss can align next-token
+            # predictions to targets -- a separately-tokenized `labels`
+            # tensor (as this code did previously) has no such alignment
+            # and would fail the moment the image-token bug above stopped
+            # masking it. Mask everything up to where the answer starts
+            # (the prompt, including all expanded image tokens) with -100
+            # so loss is computed only over the answer the model should
+            # learn to produce, conditioned on the full prompt+image context.
+            prompt_len = processor(text=[prompt_text], images=[chart.image], return_tensors="pt").input_ids.shape[1]
+            labels = inputs.input_ids.clone()
+            labels[:, :prompt_len] = -100
 
             outputs = model(**inputs, labels=labels)
             loss = outputs.loss / cfg.train.grad_accum_steps
