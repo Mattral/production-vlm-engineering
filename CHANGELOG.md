@@ -9,6 +9,28 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [1.4.3] — 2026-08-04
+
+### Fixed
+
+- **A third real bug in `vlm_chart_finetune`'s real path, found by the second GPU run** (the
+  first two, `AutoModelForVision2Seq` and the ONNX dynamic-shape issue, were fixed in `1.4.1`
+  and held — training genuinely progressed past model loading and LoRA setup this time before
+  hitting a new error): `ValueError: Image features and image tokens do not match, tokens: 0,
+  features: 140`. The training loop built the prompt as a bare f-string and called
+  `processor(text=prompt, images=chart.image, ...)` directly — Qwen2-VL's processor (like most
+  current VLM processors) does not auto-insert image placeholder tokens from plain text; only
+  `processor.apply_chat_template()` expands a `{"type": "image"}` content item into the model's
+  actual image-token markup, which the subsequent `processor()` call then expands to match the
+  image's real patch count. Skipping that step produced a text sequence with zero image tokens
+  against 140 real image features from the vision tower. Fixed by building a proper chat-template
+  message and using `apply_chat_template`. While in there, also fixed `labels`: it was built by
+  separately tokenizing just the answer text, producing a tensor a different length than
+  `input_ids` — harmless while masked by the bug above, but would have failed the model's
+  internal loss-shifting the moment that bug was fixed. `labels` is now a masked copy of the
+  full (prompt+answer) `input_ids`, `-100` over the prompt span, so loss is computed only over
+  the answer tokens the model should learn to produce.
+
 ## [1.4.2] — 2026-08-03
 
 ### Fixed

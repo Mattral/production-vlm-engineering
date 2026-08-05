@@ -87,9 +87,21 @@ merely exists.
   `CHANGELOG.md` for the full mechanism. (`onnxscript` was also added as an explicit `onnx`
   extra dependency for the same run's separate missing-dependency finding -- not tallied as a
   third bug here, since it's a missing declaration, not incorrect logic.)
-- **Running tally: nine real bugs found and fixed by actually running the code** across this
+- **A tenth real bug, found by the second GPU run** of `vlm_chart_finetune`'s real path (the
+  first two GPU-path bugs, above, were fixed and held -- training progressed further this time
+  before hitting a new one): a bare f-string prompt fed straight to the processor produced zero
+  image placeholder tokens against 140 real image features from the vision tower
+  (`ValueError: Image features and image tokens do not match, tokens: 0, features: 140`), since
+  Qwen2-VL's processor needs `apply_chat_template` to expand a `{"type": "image"}` content item
+  into its actual image-token markup first. Fixed. While fixing it, also corrected a second
+  issue in the same function -- misaligned `labels` that would have failed the model's internal
+  loss-shifting the moment the bug above stopped masking it -- but that one is *not* added to
+  the tally below: it was caught by reading the code proactively, not by an actual failure this
+  session, and the tally is specifically about failures that were observed, not ones that were
+  merely predictable. Full mechanism for both in `CHANGELOG.md`.
+- **Running tally: ten real bugs found and fixed by actually running the code** across this
   project's history (two in P0-04, two more in P1-02, two in `vlm_video_temporal`, one in the
-  CLI packaging, two in the real GPU paths), none caught by writing or reading the code alone.
+  CLI packaging, three in the real GPU paths), none caught by writing or reading the code alone.
 
 - **Repository renamed** from `computer-vision-playbook` / `cv_playbook` to `production-vlm-engineering` / `production_vlm` to accurately reflect the project's focus and production-engineering scope.
 - **Two more real bugs found and fixed in P1-02** beyond those already documented above
