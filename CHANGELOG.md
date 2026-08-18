@@ -9,6 +9,30 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [1.4.4] — 2026-08-06
+
+### Fixed
+
+- **`vlm_chart_finetune` evaluation always reported `mean_faithfulness: 0.0` with mode
+  `zero_shot_heuristic_baseline` for both zero-shot and fine-tuned, even when `ran_with_real_ml_stack: True`.**
+  Root cause: after training completed, the call site called `_zero_shot_baseline()` twice —
+  a `# TODO: replace with real generations post-train_real` comment sat there for the whole
+  project history. `train_real()` saved the adapter and returned nothing; the trained model
+  was never used for evaluation. Fixed by having `train_real()` return `(model, processor)`
+  and adding `_evaluate_with_real_model()` which generates real predictions with the trained
+  model (LoRA adapters disabled for zero-shot scoring, re-enabled for fine-tuned scoring).
+  Results on the next real GPU run will now show `mode: real_model_zero_shot` and
+  `mode: real_model_lora_finetuned` with actual faithfulness scores.
+- **`vlm_edge_inference` crashed on the second `benchmark.image_sizes` entry (384px) with
+  `ValueError: Input image size (384*384) doesn't match model (224*224)`** even after the
+  previous per-size export fix. Root cause: `google/vit-base-patch16-224` physically rejects
+  any input that isn't 224px at the model's forward pass level — the per-size export loop
+  correctly exported 224px, then failed immediately on 384px inside `torch.onnx.export`'s
+  tracer. Fixed by adding `_native_image_size()` which reads the checkpoint's actual configured
+  size from `AutoConfig`, and having `export_real_model_to_onnx()` return `None` (with a clear
+  explanatory message) for any unsupported size rather than crashing. The benchmark loop now
+  skips `None` exports gracefully and always writes `results.json`.
+
 ## [1.4.3] — 2026-08-04
 
 ### Fixed
